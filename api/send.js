@@ -1,61 +1,31 @@
-const requestLimits = new Map();
-
-function simpleDecrypt(encryptedText) {
-    try {
-        return atob(encryptedText).split('').map(char => 
-            String.fromCharCode(char.charCodeAt(0) - 3)
-        ).join('');
-    } catch(e) {
-        return encryptedText;
-    }
-}
-
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const clientIp = req.headers['x-forwarded-for'] || 'unknown';
-    const currentTime = Date.now();
-    
-    if (requestLimits.has(clientIp)) {
-        if (currentTime - requestLimits.get(clientIp) < 1000) {
-            return res.status(429).json({ error: 'Too many requests.' });
-        }
-    }
-    requestLimits.set(clientIp, currentTime);
-
-    const BOT_TOKEN = process.env.BOT_TOKEN;
-    const CHAT_ID = process.env.CHAT_ID;
-
-    if (!BOT_TOKEN || !CHAT_ID) {
-        return res.status(500).json({ error: 'Server configuration error' });
-    }
+    const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
+    const CHAT_ID = "6947664268";
 
     try {
-        let { type, text, caption, data } = req.body;
-        
-        if (text) text = simpleDecrypt(text);
-        if (caption) caption = simpleDecrypt(caption);
+        const body = req.body || {};
+        let text = body.text || "پەیامی تاقیکردنەوە";
 
-        let telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        let bodyData = { chat_id: CHAT_ID, text: text ? text.slice(0, 4000) : "داتای شفرکراو", parse_mode: "Markdown" };
+        // ئەگەر شفرە کرابوو بیکەینەوە، ئەگەر نەخێر وەک خۆی دەیهێڵینەوە
+        try {
+            text = atob(text).split('').map(char => 
+                String.fromCharCode(char.charCodeAt(0) - 3)
+            ).join('');
+        } catch(e) {}
 
-        if (type === 'photo' && data) {
-            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-            bodyData = { chat_id: CHAT_ID, caption: caption ? caption.slice(0, 1000) : "", photo: data, parse_mode: "Markdown" };
-        } else if (type === 'video' && data) {
-            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
-            // بۆ ڤیدیۆ
-        } else if (type === 'voice' && data) {
-            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
-            // بۆ دەنگ
-        }
-
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
         const response = await fetch(telegramUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData)
+            body: JSON.stringify({
+                chat_id: CHAT_ID,
+                text: text,
+                parse_mode: "Markdown"
+            })
         });
 
         const result = await response.json();
