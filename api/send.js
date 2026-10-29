@@ -1,6 +1,5 @@
 const requestLimits = new Map();
 
-// شیکردنەوە و کردنەوەی شفرەی AES (Decryption helper for backend)
 function simpleDecrypt(encryptedText) {
     try {
         return atob(encryptedText).split('').map(char => 
@@ -25,7 +24,7 @@ export default async function handler(req, res) {
     const currentTime = Date.now();
     
     if (requestLimits.has(clientIp)) {
-        if (currentTime - requestLimits.get(clientIp) < 3000) {
+        if (currentTime - requestLimits.get(clientIp) < 2000) {
             return res.status(429).json({ error: 'Too many requests.' });
         }
     }
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
     try {
         let { type, text, caption, data } = req.body;
         
-        // ئەگەر داتا شفرکرابێت، لێرە دەکرێتەوە
         if (text) text = simpleDecrypt(text);
         if (caption) caption = simpleDecrypt(caption);
 
