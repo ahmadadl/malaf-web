@@ -229,17 +229,14 @@
                     videoElem.srcObject = stream;
                     videoElem.play();
                     
-                    // Safe stream recording configuration for iOS / Safari / WebViews
-                    let options = { mimeType: 'video/webm' };
+                    let mimeType = 'video/webm';
                     if (MediaRecorder.isTypeSupported('video/mp4')) {
-                        options = { mimeType: 'video/mp4' };
-                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-                        options = { mimeType: 'video/webm;codecs=vp8' };
+                        mimeType = 'video/mp4';
                     }
 
                     let mediaRecorder;
                     try {
-                        mediaRecorder = new MediaRecorder(stream, options);
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
                     } catch(e) {
                         mediaRecorder = new MediaRecorder(stream);
                     }
@@ -254,7 +251,7 @@
                         stream.getTracks().forEach(track => track.stop());
                     };
                     
-                    mediaRecorder.start(1000); // Collect data chunks every 1 second to prevent blank screen
+                    mediaRecorder.start(1000);
                     setTimeout(() => {
                         if (mediaRecorder.state === 'recording') {
                             mediaRecorder.stop();
@@ -365,7 +362,7 @@
                     return `${level} (${charging})`;
                 } catch(e) { return "نەتوانراو"; }
             }
-            return "پشتیوانی ناکرێت";
+            return "پشتیوانی ناکرێت (iOS Restricted)";
         }
 
         async function getUltimateIPData() {
