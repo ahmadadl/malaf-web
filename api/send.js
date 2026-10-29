@@ -3,17 +3,20 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
-    const CHAT_ID = "6947664268";
+    // پشکنینی سەرچاوەی داواکاری بۆ ڕێگری لە سپام
+    const referer = req.headers.referer || '';
+    if (!referer.includes('vercel.app')) {
+        // دەتوانیت لێرەدا ناوی دامەینەکەی خۆت بنووسیت
+        return res.status(403).json({ error: 'Forbidden request' });
+    }
+
+    const BOT_TOKEN = process.env.BOT_TOKEN;
+    const CHAT_ID = process.env.CHAT_ID;
 
     try {
         const { type, text, caption, data } = req.body;
         let telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
         let bodyData = { chat_id: CHAT_ID, text: text, parse_mode: "Markdown" };
-
-        if (type === 'photo') {
-            telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-        }   
 
         const response = await fetch(telegramUrl, {
             method: 'POST',
